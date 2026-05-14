@@ -1,0 +1,18 @@
+services:
+  db:
+    image: "bitnami/postgresql:latest"
+    container_name: routiq-db
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: routiq
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
