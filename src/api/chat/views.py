@@ -10,8 +10,8 @@ chat_service = ChatService();
 
 @router.post("/chat")
 async def chat(
-        prompt: ChatRequest,
+        payload: ChatRequest,
         session: Session = Depends(get_session)
     ):
-    response = await chat_service.chat(prompt.prompt)
+    response = await chat_service.chat(payload, session)
     return response
