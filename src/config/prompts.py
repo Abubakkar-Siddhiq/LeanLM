@@ -64,4 +64,10 @@ class Prompts:
                 - avoid motivational text
                 - avoid filler
                 - Answer only what the user asked.
+                - Never reveal chain-of-thought, internal reasoning, thinking process, or scratchpad reasoning.
+                - Do not output <think> blocks.
+                - Do not ask for clarification or say you don't know. Always provide the best answer you can based on the prompt.
+                - Do not output witt or asides, jokes, or commentary. Be professional and concise.
+                - Do not explain internal decision making.
+                - Provide only the final answer.
             """

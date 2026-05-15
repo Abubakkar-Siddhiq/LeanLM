@@ -2,7 +2,8 @@ from fastapi import HTTPException
 
 from api.chat.models import Conversation, Message
 from providers.groq import GroqProvider
-from sqlmodel import Session
+from sqlmodel import Session, select
+from uuid import UUID
 from .schema import ChatRequest
 from config.prompts import Prompts
 import json
@@ -44,6 +45,15 @@ class ChatService:
             session.commit()
             session.refresh(conversation)
             conversation_id = conversation.id
+        else:
+            conversation_id = payload.conversation_id
+            conversation = session.get(Conversation, conversation_id)
+
+            if not conversation:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Conversation not found"
+                )
         
 
         user_message = Message(
@@ -78,4 +88,42 @@ class ChatService:
             "confidence": intent["confidence"],
             "model": model,
             "response": response,
+        }
+
+    def get_conversations(self, session: Session):
+
+        conversations = session.exec(
+            select(Conversation)
+            .order_by(Conversation.created_at.desc())
+        ).all()
+
+        return conversations
+
+
+    def get_conversation_messages(
+        self,
+        conversation_id: UUID,
+        session: Session
+    ):
+
+        conversation = session.get(
+            Conversation,
+            conversation_id
+        )
+
+        if not conversation:
+            return None
+
+        messages = session.exec(
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id
+            )
+            .order_by(Message.created_at)
+        ).all()
+
+        return {
+            "conversation_id": conversation.id,
+            "created_at": conversation.created_at,
+            "messages": messages
         }

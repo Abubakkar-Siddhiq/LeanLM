@@ -11,6 +11,7 @@ class Conversation(SQLModel, table=True):
         back_populates="conversation"
     )
 
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class Message(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
