@@ -1,9 +1,10 @@
 from typing import Optional, List
+from uuid import UUID, uuid4
 from sqlmodel import SQLModel, Field, Relationship
 
 
 class Conversation(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
 
     messages: List["Message"] = Relationship(
         back_populates="conversation"
@@ -11,12 +12,11 @@ class Conversation(SQLModel, table=True):
 
 
 class Message(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
     role: str
     content: str
 
-    conversation_id: int = Field(
+    conversation_id: UUID = Field(
         foreign_key="conversation.id"
     )
 
