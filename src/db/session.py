@@ -1,8 +1,8 @@
 from sqlmodel import Session, SQLModel, create_engine
-import config
+from config.settings import settings
 
 engine = create_engine(
-    config.DATABASE_URL,
+    settings.DATABASE_URL,
     echo=True,
 )
 
