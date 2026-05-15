@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 from groq import Groq
+from config.prompts import Prompts
 
 load_dotenv()
 
@@ -18,6 +19,10 @@ class GroqProvider:
         completion = client.chat.completions.create(
             model=model,
             messages=[
+                {
+                    "role": "system",
+                    "content": Prompts.system_prompt()
+                },
                 {
                     "role": "user",
                     "content": prompt
