@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends
+﻿from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlmodel import Session
 
 from api.chat.services import ChatService
@@ -13,6 +13,7 @@ chat_service = ChatService()
 @router.post("/chat")
 async def chat(
     payload: ChatRequest,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_session)
 ):
-    return await chat_service.chat(payload, session)
+    return await chat_service.chat(payload, session, background_tasks)

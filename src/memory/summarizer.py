@@ -1,3 +1,5 @@
+from db.models import Conversation, Message
+from sqlmodel import select
 
 class Summarizer:
     async def summarize(self, provider, model, messages):
@@ -20,9 +22,55 @@ class Summarizer:
 
         return await provider.generate(
             model=model,
-            prompt=prompt
+            messages=[{"role": "user", "content": prompt}]
         )
-    
+
+    def run_summarization(self, conversation_id, session, llm_provider, local_model):
+        try:
+            conversation = session.get(
+                Conversation,
+                conversation_id
+            )
+
+            messages = session.exec(
+                select(Message)
+                .where(Message.conversation_id == conversation_id)
+                .order_by(Message.created_at)
+            ).all()
+
+            # keep latest 10 messages
+            old_messages = messages[:-10]
+
+            if not old_messages:
+                return
+
+            summary = self.summarize(
+                llm_provider,
+                local_model,
+                old_messages
+            )
+
+            conversation.summary = (
+                (conversation.summary or "")
+                + "\n"
+                + summary
+            )
+
+            conversation.last_summarized_at_count = (
+                conversation.message_count
+            )
+
+            session.add(conversation)
+
+            # delete compressed messages
+            for msg in old_messages:
+                session.delete(msg)
+
+            session.commit()
+
+        finally:
+            session.close()
+
     def should_summarize(
         self,
         conversation,
