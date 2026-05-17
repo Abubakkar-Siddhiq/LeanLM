@@ -1,5 +1,5 @@
 
-class MemoryService:
+class Summarizer:
     async def summarize(self, provider, model, messages):
         text = "\n".join(
             f"{m['role']}: {m['content']}"
