@@ -45,7 +45,16 @@ class Prompts:
                 4. A long prompt is not automatically high — classify by task complexity, not length.
                 5. Requests involving architecture, debugging, optimization, implementation from scratch, or deep reasoning should usually be classified as high.
                 6. Coding tasks are not automatically high. Small fixes or explanations are usually medium.
-                
+
+                Do NOT classify prompts as HIGH merely because they mention architecture, databases, scaling, or system design terminology.
+                if the task or question or explaination is silly or straightforward, or not complex, text book definitions, simple comparisons it should be classified as LOW or MEDIUM.
+
+                HIGH should ONLY be used when the request requires:
+                - deep multi-step reasoning
+                - large-scale distributed systems analysis
+                - advanced tradeoff evaluation
+                - highly specialized expertise
+                                
                 Respond with a single JSON object and nothing else.
                 No explanation. No markdown. No preamble.
                 Return valid parsable JSON only.
