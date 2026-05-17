@@ -10,15 +10,33 @@ class Prompts:
                 - low : Simple, factual, conversational. No reasoning required.
                         Examples: greetings, yes/no questions, definitions,
                         unit conversions, "what is X", single-line completions.
+                        Simple arithmetic, formatting, or short contextual follow-ups should remain LOW unless deeper reasoning is required.
 
                 - medium : Moderate effort. Some reasoning or generation required.
                         Examples: summarization, code explanation, short essays,
-                        data extraction, rewriting text, step-by-step how-tos.
+                        data extraction, rewriting text. Only hard reasoning or multi-step tasks should be medium. Simple code explanations, short summaries, or straightforward generation should remain LOW.
 
                 - high : Complex, multi-step, or expert-level.
                         Examples: system design, debugging complex code,
                         long-form generation, multi-constraint reasoning,
                         architecture decisions, research synthesis.
+
+                LOW examples:
+                - "add 10 to 25"
+                - "convert this to words"
+                - "what was my last message?"
+                - "summarize in one line"
+
+                MEDIUM examples:
+                - "explain why this algorithm fails"
+                - "rewrite this email professionally"
+                - "compare SQL vs NoSQL"
+
+                HIGH examples:
+                - "Design a scalable distributed chat architecture for 10 million concurrent users"
+                - "Analyze the time and space complexity tradeoffs of this graph algorithm"
+                - "Build a secure multi-tenant SaaS authentication system with RBAC and JWT rotation"
+                - "Explain how Raft consensus handles network partitions"
 
                 Rules:
                 1. When uncertain between two tiers, pick the lower one.
