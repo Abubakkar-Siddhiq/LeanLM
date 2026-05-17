@@ -15,19 +15,10 @@ class GroqProvider:
     def __init__(self):
         pass
 
-    async def generate(self, model: str, prompt: str):
+    async def generate(self, model: str, messages: list):
         completion = client.chat.completions.create(
             model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": Prompts.system_prompt()
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
+            messages=messages,
             temperature=0.7,
         )
 
