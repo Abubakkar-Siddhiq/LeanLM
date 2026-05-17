@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 
-from api.chat.models import Conversation, Message
+from db.models import Conversation, Message
 from providers.groq import GroqProvider
 from sqlmodel import Session, select
 from uuid import UUID
