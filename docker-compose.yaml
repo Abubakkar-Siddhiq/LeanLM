@@ -1,6 +1,6 @@
 services:
   db:
-    image: "bitnami/postgresql:latest"
+    image: pgvector/pgvector:pg16
     container_name: routiq-db
 
     environment:

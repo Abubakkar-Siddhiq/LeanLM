@@ -24,13 +24,14 @@ The working tree has in-progress changes with several issues. Before the code ru
 ## Structure
 
 | Path | Role |
-|---|---|
+|---|---|---|
 | `src/main.py` | FastAPI app entrypoint, includes `/api` routers |
 | `src/api/chat/views.py` | Route: `POST /api/chat` |
-| `src/api/chat/services.py` | Business logic: intent detection, model routing, message persistence |
+| `src/api/chat/services.py` | Business logic: conversation lifecycle, message persistence |
 | `src/api/chat/schema.py` | Pydantic request schema (`ChatRequest`) |
 | `src/api/conversation/views.py` | Routes: `GET /api/conversations[/{id}]` |
 | `src/api/conversation/services.py` | Query logic for conversations and their messages |
+| `src/services/routing.py` | Intent classification + model selection (`IntentRouter`) |
 | `src/db/models.py` | SQLModel tables: `Conversation`, `Message` |
 | `src/config/settings.py` | `DATABASE_URL`, `GROQ_API_KEY` from `.env` |
 | `src/config/prompts.py` | Static prompt templates (`intent_detection`, `system_prompt`) |
@@ -41,7 +42,7 @@ The working tree has in-progress changes with several issues. Before the code ru
 
 ## Architecture notes
 
-- **Model routing**: `low` → `llama-3.1-8b-instant`, `medium` → `qwen/qwen3-32b`, `high` → `openai/gpt-oss-120b`
+- **Model routing** (via `IntentRouter` in `src/services/routing.py`): `low` → `llama-3.1-8b-instant`, `medium` → `qwen/qwen3-32b`, `high` → `openai/gpt-oss-120b`
 - **Intent classification** reuses `llama-3.1-8b-instant` regardless of prompt tier
 - **DB**: PostgreSQL via docker-compose (bitnami image). Tables created automatically at startup via `SQLModel.metadata.create_all` (models must be imported before that call — currently works via transitive imports from both routers)
 - **`GroqProvider.generate`** — uses the **sync** `groq` SDK inside an `async` method (blocks event loop). The `client` is instantiated at module level
