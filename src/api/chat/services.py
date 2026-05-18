@@ -5,35 +5,17 @@ from db.session import SessionLocal
 from providers.groq import GroqProvider
 from .schema import ChatRequest
 from config.prompts import Prompts
-import json
 from memory.context_builder import ContextBuilder
 from memory.summarizer import Summarizer
+from services.routing import IntentRouter
 
 class ChatService:
-    MODEL_MAP = {
-        "low": "llama-3.1-8b-instant",
-        "medium": "qwen/qwen3-32b",
-        "high": "openai/gpt-oss-120b",
-    }
-
     def __init__(self):
         self.llm_provider = GroqProvider()
         self.context_builder = ContextBuilder()
         self.summarizer = Summarizer()
         self.local_model = "llama-3.1-8b-instant"
-
-    async def find_intent(self, prompt: str) -> dict:
-        user_prompt = prompt.lower()
-
-        response = await self.llm_provider.generate(
-            model=self.local_model,
-            messages=[{"role": "user", "content": Prompts.intent_detection(user_prompt)}]
-        )
-        print("Intent classification response:", response)
-        return response
-
-    def select_model(self, complexity: str):
-        return self.MODEL_MAP[complexity]
+        self.router = IntentRouter(self.llm_provider, self.local_model)
 
     async def chat(self, payload: ChatRequest, session: Session, background_tasks: BackgroundTasks):
         prompt = payload.prompt
@@ -57,17 +39,26 @@ class ChatService:
                     status_code=404,
                     detail="Conversation not found"
                 )
-
+            
         # Save message to DB
         user_message = Message(
             role="user",
             content=payload.prompt,
             conversation_id=conversation_id
         )
+
+        # Generate embedding
+        embedding = self.embedder.embed(
+            user_message.content
+        )
+
+        user_message.embedding = embedding
+
+        # Save
         session.add(user_message)
         session.commit()
         session.refresh(user_message)
-
+        
         # Fetch conversation history for context
         messages = session.exec(
             select(Message)
@@ -80,6 +71,18 @@ class ChatService:
             for m in messages
         ]
 
+        # semantic retrieval
+        relevant_messages = self.retrieve_relevant_messages(
+            session=session,
+            query=prompt,
+            conversation_id=conversation_id
+        )
+
+        relevant_context = "\n".join([
+            f"{m.role}: {m.content}"
+            for m in relevant_messages
+        ])
+
         # Build context
         context =self.context_builder.build(
             system_prompt=Prompts.system_prompt(),
@@ -87,10 +90,20 @@ class ChatService:
             messages=chat_history
         )
 
+        # inject semantic memories
+        if relevant_context:
+
+            context.insert(1, {
+                "role": "system",
+                "content": (
+                    "Relevant past conversation context:\n"
+                    f"{relevant_context}"
+                )
+            })
+
         # Find intent and select model and generate response based on intent
-        intent_response = await self.find_intent(prompt)
-        intent = json.loads(intent_response)
-        model = self.select_model(intent["complexity"])
+        intent = await self.router.classify(prompt)
+        model = self.router.select_model(intent["complexity"])
 
         # Generate Response
         response = await self.llm_provider.generate(model=model, messages=context)
@@ -131,3 +144,41 @@ class ChatService:
             "model": model,
             "response": response,
         }
+
+    def retrieve_relevant_messages(
+        self,
+        session,
+        query: str,
+        conversation_id,
+        limit=5
+    ):
+        query_embedding = self.embedder.embed(query)
+
+        messages = session.exec(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .where(Message.embedding != None)  # noqa
+        ).all()
+
+        scored_messages = []
+
+        for message in messages:
+
+            similarity = self.cosine_similarity(
+                query_embedding,
+                message.embedding
+            )
+
+            scored_messages.append(
+                (similarity, message)
+            )
+
+        scored_messages.sort(
+            key=lambda x: x[0],
+            reverse=True
+        )
+
+        return [
+            message
+            for _, message in scored_messages[:limit]
+        ]
