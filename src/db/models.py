@@ -1,7 +1,8 @@
 from typing import Optional, List
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field, Relationship, Column
+from pgvector.sqlalchemy import Vector
 
 
 class Conversation(SQLModel, table=True):
@@ -20,6 +21,9 @@ class Message(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     role: str
     content: str
+    embedding: list[float] = Field(
+        sa_column=Column(Vector(384), nullable=True)
+    )
 
     conversation_id: Optional[UUID] = Field(
         foreign_key="conversation.id"
