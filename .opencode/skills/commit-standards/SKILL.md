@@ -1,3 +1,8 @@
+---
+name: commit-standards
+description: Commit message format (type(scope): message), atomic commit rules, scope reference, and pre-commit checklist for Routiq. Use when committing or discussing how to structure commits.
+---
+
 # Commit Standards for Routiq
 
 ## Format
