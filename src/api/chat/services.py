@@ -8,6 +8,7 @@ from config.prompts import Prompts
 from memory.context_builder import ContextBuilder
 from memory.summarizer import Summarizer
 from services.routing import IntentRouter
+from services.embedder import Embedder
 
 class ChatService:
     def __init__(self):
@@ -16,6 +17,7 @@ class ChatService:
         self.summarizer = Summarizer()
         self.local_model = "llama-3.1-8b-instant"
         self.router = IntentRouter(self.llm_provider, self.local_model)
+        self.embedder = Embedder()
 
     async def chat(self, payload: ChatRequest, session: Session, background_tasks: BackgroundTasks):
         prompt = payload.prompt
@@ -92,7 +94,6 @@ class ChatService:
 
         # inject semantic memories
         if relevant_context:
-
             context.insert(1, {
                 "role": "system",
                 "content": (
@@ -152,33 +153,15 @@ class ChatService:
         conversation_id,
         limit=5
     ):
+
         query_embedding = self.embedder.embed(query)
 
         messages = session.exec(
             select(Message)
             .where(Message.conversation_id == conversation_id)
-            .where(Message.embedding != None)  # noqa
+            .where(Message.embedding != None)
+            .order_by(Message.embedding.cosine_distance(query_embedding))
+            .limit(limit)
         ).all()
 
-        scored_messages = []
-
-        for message in messages:
-
-            similarity = self.cosine_similarity(
-                query_embedding,
-                message.embedding
-            )
-
-            scored_messages.append(
-                (similarity, message)
-            )
-
-        scored_messages.sort(
-            key=lambda x: x[0],
-            reverse=True
-        )
-
-        return [
-            message
-            for _, message in scored_messages[:limit]
-        ]
+        return messages
