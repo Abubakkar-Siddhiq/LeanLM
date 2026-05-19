@@ -4,7 +4,7 @@ from sqlmodel import select
 class Summarizer:
     async def summarize(self, provider, model, messages):
         text = "\n".join(
-            f"{m['role']}: {m['content']}"
+            f"{m.role}: {m.content}"
             for m in messages
         )
 
@@ -25,7 +25,7 @@ class Summarizer:
             messages=[{"role": "user", "content": prompt}]
         )
 
-    def run_summarization(self, conversation_id, session, llm_provider, local_model):
+    async def run_summarization(self, conversation_id, session, llm_provider, local_model):
         try:
             conversation = session.get(
                 Conversation,
@@ -44,7 +44,7 @@ class Summarizer:
             if not old_messages:
                 return
 
-            summary = self.summarize(
+            summary = await self.summarize(
                 llm_provider,
                 local_model,
                 old_messages
@@ -68,6 +68,8 @@ class Summarizer:
 
             session.commit()
 
+        except Exception as e:
+            print(f"Summarization failed for conversation {conversation_id}: {e}")
         finally:
             session.close()
 
@@ -89,8 +91,8 @@ class Summarizer:
             return False
 
         # context pressure still low
-        if context_tokens < 4500:
-            return False
+        # if context_tokens < 4500:
+        #     return False
 
         # not enough history to summarize meaningfully
         if len(messages) < 20:
