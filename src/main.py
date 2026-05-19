@@ -4,11 +4,11 @@ from fastapi import FastAPI
 
 from api.chat.views import router as chat_router
 from api.conversation.views import router as conversation_router
-from db.session import create_db_and_tables
+from db.session import init_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_db_and_tables()
+    init_db()
     print("Starting up the application...")
     yield
     print("Shutting down the application...")

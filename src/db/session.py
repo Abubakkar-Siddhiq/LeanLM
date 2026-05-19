@@ -1,4 +1,4 @@
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, text
 from config.settings import settings
 
 engine = create_engine(
@@ -6,9 +6,14 @@ engine = create_engine(
     echo=True,
 )
 
-
-def create_db_and_tables():
+def init_db():
+    # Enable pgvector extension first
+    with Session(engine) as session:
+        session.exec(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        session.commit()
+    
     SQLModel.metadata.create_all(engine)
+
 
 
 def get_session():
