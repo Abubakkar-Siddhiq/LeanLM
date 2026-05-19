@@ -21,9 +21,7 @@ class Message(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     role: str
     content: str
-    embedding: list[float] = Field(
-        sa_column=Column(Vector(384), nullable=True)
-    )
+    embedding: list[float] = Field(sa_column=Column(Vector(384)))
 
     conversation_id: Optional[UUID] = Field(
         foreign_key="conversation.id"
