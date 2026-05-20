@@ -8,6 +8,7 @@ from db.models import Conversation, Message
 from db.session import SessionLocal
 from providers.groq import GroqProvider
 from schemas.trace import RequestTrace
+from services.usage_tracker import UsageTracker
 from .schema import ChatRequest
 from config.prompts import Prompts
 from memory.context_builder import ContextBuilder
@@ -29,6 +30,7 @@ class ChatService:
         self.model_selector = ModelSelector()
         self.embedder = Embedder()
         self.prompt_builder = ChatPromptBuilder()
+        self.usage_tracker = UsageTracker()
 
     def _validate_prompt(self, prompt: str | None) -> str:
         if prompt is None or prompt.strip() == "":
@@ -116,6 +118,26 @@ class ChatService:
                 local_model=self.local_model,
             )
 
+    def _estimate_cost(
+        self,
+        context: list[dict[str, str]],
+        response: str,
+        model: str,
+    ):
+        input_tokens = self.usage_tracker.estimate_tokens(context)
+        output_tokens = len(response.split())
+        estimated_cost = self.usage_tracker.estimate_cost(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
+
+        return {
+            "input_tokens_estimate": input_tokens,
+            "output_tokens_estimate": output_tokens,
+            "estimated_cost": estimated_cost,
+        } 
+
     async def chat(
         self,
         payload: ChatRequest,
@@ -184,6 +206,7 @@ class ChatService:
             "model": model,
             "response": response,
             "trace": trace.model_dump(),
+            "cost_info": self._estimate_cost(context, response, model)
         }
 
     def retrieve_relevant_messages(
