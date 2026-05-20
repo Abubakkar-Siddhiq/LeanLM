@@ -1,9 +1,9 @@
+import json
 from config.prompts import Prompts
 from providers.groq import GroqProvider
-import json
-from schemas.classification import ClassificationResult
-from config.models import MODEL_MAP, MEDIUM_MODEL
 from schemas.routing import RouteDecision
+from schemas.classification import ClassificationResult
+from config.routing import ROUTING_RULES, DEFAULT_MODEL_BY_COMPLEXITY
 
 
 class IntentClassifier:
@@ -29,16 +29,31 @@ class IntentClassifier:
                 confidence=0.0
             ) 
 
+
 class ModelSelector:
-    def select_model(self, intent: ClassificationResult) -> RouteDecision:
-        model = MODEL_MAP.get(intent.complexity, MEDIUM_MODEL)
+    def select(self, intent: ClassificationResult) -> RouteDecision:
+        model, routing_reason = self._select_model(intent)
 
         return RouteDecision(
-            provider="groq",
-            model=model,
-            complexity=intent.complexity,
-            task_type=intent.task_type,
-            reason=intent.reason,
-            confidence=intent.confidence,
+                provider="groq",
+                model=model,
+                task_type=intent.task_type,
+                complexity=intent.complexity,
+                classifier_reason=intent.reason,
+                routing_reason=routing_reason,
+                confidence=intent.confidence,
+            )
+
+    def _select_model(self, intent: ClassificationResult) -> tuple[str, str]:
+        for rule in ROUTING_RULES:
+            if (
+                intent.task_type in rule["task_types"]
+                and intent.complexity in rule["complexities"]
+            ):
+                return rule["model"], rule["reason"]
+
+        return (
+            DEFAULT_MODEL_BY_COMPLEXITY.get(intent.complexity, DEFAULT_MODEL_BY_COMPLEXITY["medium"]),
+            "Fallback model selected by complexity."
         )
 

@@ -5,6 +5,6 @@ class RequestTrace(BaseModel):
     provider: str = "groq"
     model: str
     complexity: str
-    reason: str
+    classifier_reason: str
     confidence: float
     prompt_tokens_estimate: Optional[int] = None

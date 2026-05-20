@@ -169,13 +169,13 @@ class ChatService:
         )
 
         intent = await self.classifier.classify(prompt)
-        route = self.model_selector.select_model(intent)
+        route = self.model_selector.select(intent)
 
         trace = RequestTrace(
             provider=route.provider,
             model=route.model,
             complexity=route.complexity,
-            reason=route.reason,
+            classifier_reason=route.classifier_reason,
             confidence=route.confidence,
             prompt_tokens_estimate=sum(len(m["content"].split()) for m in context),
         )
@@ -195,7 +195,9 @@ class ChatService:
             "assistant_message_id": assistant_message.id,
             "conversation_id": conversation_id,
             "intent": route.complexity,
-            "reason": route.reason,
+            "task_type": route.task_type,
+            "classifier_reason": route.classifier_reason,
+            "routing_reason": route.routing_reason,
             "confidence": route.confidence,
             "provider": route.provider,
             "model": route.model,
