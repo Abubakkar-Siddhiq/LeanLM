@@ -8,3 +8,7 @@ class RequestTrace(BaseModel):
     classifier_reason: str
     confidence: float
     prompt_tokens_estimate: Optional[int] = None
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    latency_ms: Optional[float] = None

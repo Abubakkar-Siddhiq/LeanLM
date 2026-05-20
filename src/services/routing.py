@@ -15,10 +15,11 @@ class IntentClassifier:
         try:
             user_prompt = prompt.lower()
 
-            response = await self.llm_provider.generate(
+            llm_response = await self.llm_provider.generate(
                 model=self.classify_model,
                 messages=[{"role": "user", "content": Prompts.intent_detection(user_prompt)}]
             )
+            response = llm_response.content
             print("Intent classification response:", response)
             return ClassificationResult(**json.loads(response))
         except Exception as e:

@@ -20,10 +20,11 @@ class Summarizer:
                     {text}
                 """
 
-        return await provider.generate(
+        result = await provider.generate(
             model=model,
             messages=[{"role": "user", "content": prompt}]
         )
+        return result.content
 
     async def run_summarization(self, conversation_id, session, llm_provider, local_model):
         try:

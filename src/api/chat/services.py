@@ -123,9 +123,18 @@ class ChatService:
         context: list[dict[str, str]],
         response: str,
         model: str,
+        llm_response=None,
     ):
-        input_tokens = self.usage_tracker.estimate_tokens(context)
-        output_tokens = len(response.split())
+        input_tokens = (
+            llm_response.input_tokens
+            if llm_response and llm_response.input_tokens is not None
+            else self.usage_tracker.estimate_tokens(context)
+        )
+        output_tokens = (
+            llm_response.output_tokens
+            if llm_response and llm_response.output_tokens is not None
+            else len(response.split())
+        )
         estimated_cost = self.usage_tracker.estimate_cost(
             model=model,
             input_tokens=input_tokens,
@@ -171,6 +180,9 @@ class ChatService:
         intent = await self.classifier.classify(prompt)
         route = self.model_selector.select(intent)
 
+        llm_response = await self.llm_provider.generate(model=route.model, messages=context)
+        response = llm_response.content
+
         trace = RequestTrace(
             provider=route.provider,
             model=route.model,
@@ -178,9 +190,11 @@ class ChatService:
             classifier_reason=route.classifier_reason,
             confidence=route.confidence,
             prompt_tokens_estimate=sum(len(m["content"].split()) for m in context),
+            input_tokens=llm_response.input_tokens,
+            output_tokens=llm_response.output_tokens,
+            total_tokens=llm_response.total_tokens,
+            latency_ms=llm_response.latency_ms,
         )
-
-        response = await self.llm_provider.generate(model=route.model, messages=context)
 
         assistant_message = self._save_assistant_message(
             response, conversation, conversation_id, session
@@ -202,8 +216,14 @@ class ChatService:
             "provider": route.provider,
             "model": route.model,
             "response": response,
+            "token_useage": { 
+                "input_tokens": llm_response.input_tokens,
+                "output_tokens": llm_response.output_tokens,
+                "total_tokens": llm_response.total_tokens,
+                "latency_ms": llm_response.latency_ms,
+            },
             "trace": trace.model_dump(),
-            "cost_info": self._estimate_cost(context, response, route.model)
+            "cost_info": self._estimate_cost(context, response, route.model, llm_response),
         }
 
     def retrieve_relevant_messages(

@@ -1,7 +1,8 @@
-from dotenv import load_dotenv
 import os
+import time
+from dotenv import load_dotenv
 from groq import Groq
-from config.prompts import Prompts
+from schemas.llm import LLMResponse
 
 load_dotenv()
 
@@ -15,11 +16,31 @@ class GroqProvider:
     def __init__(self):
         pass
 
-    async def generate(self, model: str, messages: list):
+    async def generate(self, model: str, messages: list) -> LLMResponse:
+        start = time.monotonic()
         completion = client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=0.7,
         )
+        latency_ms = (time.monotonic() - start) * 1000
 
-        return completion.choices[0].message.content
+        content = completion.choices[0].message.content
+        usage = completion.usage
+
+        raw = None
+        try:
+            raw = completion.model_dump()
+        except Exception:
+            pass
+
+        return LLMResponse(
+            content=content,
+            provider="groq",
+            model=model,
+            input_tokens=usage.prompt_tokens if usage else None,
+            output_tokens=usage.completion_tokens if usage else None,
+            total_tokens=usage.total_tokens if usage else None,
+            latency_ms=latency_ms,
+            raw=raw,
+        )
