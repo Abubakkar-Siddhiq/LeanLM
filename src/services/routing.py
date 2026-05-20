@@ -3,6 +3,7 @@ from providers.groq import GroqProvider
 import json
 from schemas.classification import ClassificationResult
 from config.models import MODEL_MAP, MEDIUM_MODEL
+from schemas.routing import RouteDecision
 
 
 class IntentClassifier:
@@ -29,6 +30,15 @@ class IntentClassifier:
             ) 
 
 class ModelSelector:
-    def select_model(self, complexity: str) -> str:
-        return MODEL_MAP.get(complexity, MEDIUM_MODEL)
+    def select_model(self, intent: ClassificationResult) -> RouteDecision:
+        model = MODEL_MAP.get(intent.complexity, MEDIUM_MODEL)
+
+        return RouteDecision(
+            provider="groq",
+            model=model,
+            complexity=intent.complexity,
+            task_type=intent.task_type,
+            reason=intent.reason,
+            confidence=intent.confidence,
+        )
 

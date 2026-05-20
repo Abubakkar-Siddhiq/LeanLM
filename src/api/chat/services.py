@@ -169,24 +169,18 @@ class ChatService:
         )
 
         intent = await self.classifier.classify(prompt)
-        complexity = intent.complexity
-        try:
-            model = self.model_selector.select_model(complexity)
-        except KeyError:
-            logger.warning("Unknown complexity '%s', falling back to medium", complexity)
-            model = self.model_selector.select_model("medium")
-            complexity = "medium"
+        route = self.model_selector.select_model(intent)
 
         trace = RequestTrace(
-            provider="groq",
-            model=model,
-            complexity=intent.complexity,
-            reason=intent.reason,
-            confidence=intent.confidence,
+            provider=route.provider,
+            model=route.model,
+            complexity=route.complexity,
+            reason=route.reason,
+            confidence=route.confidence,
             prompt_tokens_estimate=sum(len(m["content"].split()) for m in context),
         )
 
-        response = await self.llm_provider.generate(model=model, messages=context)
+        response = await self.llm_provider.generate(model=route.model, messages=context)
 
         assistant_message = self._save_assistant_message(
             response, conversation, conversation_id, session
@@ -200,13 +194,14 @@ class ChatService:
             "user_message_id": user_message.id,
             "assistant_message_id": assistant_message.id,
             "conversation_id": conversation_id,
-            "intent": complexity,
-            "reason": intent.reason,
-            "confidence": intent.confidence,
-            "model": model,
+            "intent": route.complexity,
+            "reason": route.reason,
+            "confidence": route.confidence,
+            "provider": route.provider,
+            "model": route.model,
             "response": response,
             "trace": trace.model_dump(),
-            "cost_info": self._estimate_cost(context, response, model)
+            "cost_info": self._estimate_cost(context, response, route.model)
         }
 
     def retrieve_relevant_messages(
