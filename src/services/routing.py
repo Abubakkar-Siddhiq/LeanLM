@@ -3,13 +3,7 @@ from providers.groq import GroqProvider
 import json
 
 
-class IntentRouter:
-    MODEL_MAP = {
-        "low": "llama-3.1-8b-instant",
-        "medium": "qwen/qwen3-32b",
-        "high": "openai/gpt-oss-120b",
-    }
-
+class IntentClassifier:
     def __init__(self, llm_provider: GroqProvider, classify_model: str):
         self.llm_provider = llm_provider
         self.classify_model = classify_model
@@ -24,5 +18,15 @@ class IntentRouter:
         print("Intent classification response:", response)
         return json.loads(response)
 
+class ModelSelector:
+    MODEL_MAP = {
+        "low": "llama-3.1-8b-instant",
+        "medium": "qwen/qwen3-32b",
+        "high": "openai/gpt-oss-120b",
+    }
+
     def select_model(self, complexity: str) -> str:
         return self.MODEL_MAP[complexity]
+
+
+IntentRouter = IntentClassifier  # backward compat alias
