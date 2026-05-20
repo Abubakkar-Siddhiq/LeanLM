@@ -66,12 +66,20 @@ class Prompts:
                 Dont ouptut your thinking process. No emdashes, no emojies, no asides. Just the JSON.
                 Just return the JSON object with the keys "complexity", "confidence", and "reason".
 
-                Format:
-                    {{
-                        "complexity": "low" | "medium" | "high",
-                        "confidence": "high" | "medium" | "low",
-                        "reason": "one sentence max"
-                    }}
+               Format:
+                {{
+                    "complexity": "low" | "medium" | "high",
+                    "confidence": float between 0 and 1,
+                    "reason": "one sentence max"
+                }}
+
+                Return valid JSON only.
+                Example:
+                {{
+                    "complexity": "medium",
+                    "confidence": 0.84,
+                    "reason": "Requires moderate reasoning and explanation."
+                }}
 
                 User prompt: {user_prompt}
             """

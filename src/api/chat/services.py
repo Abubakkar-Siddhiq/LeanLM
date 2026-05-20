@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from db.models import Conversation, Message
 from db.session import SessionLocal
 from providers.groq import GroqProvider
+from schemas.trace import RequestTrace
 from .schema import ChatRequest
 from config.prompts import Prompts
 from memory.context_builder import ContextBuilder
@@ -146,13 +147,22 @@ class ChatService:
         )
 
         intent = await self.classifier.classify(prompt)
-        complexity = intent.get("complexity", "medium")
+        complexity = intent.complexity
         try:
             model = self.model_selector.select_model(complexity)
         except KeyError:
             logger.warning("Unknown complexity '%s', falling back to medium", complexity)
             model = self.model_selector.select_model("medium")
             complexity = "medium"
+
+        trace = RequestTrace(
+            provider="groq",
+            model=model,
+            complexity=intent.complexity,
+            reason=intent.reason,
+            confidence=intent.confidence,
+            prompt_tokens_estimate=sum(len(m["content"].split()) for m in context),
+        )
 
         response = await self.llm_provider.generate(model=model, messages=context)
 
@@ -169,10 +179,11 @@ class ChatService:
             "assistant_message_id": assistant_message.id,
             "conversation_id": conversation_id,
             "intent": complexity,
-            "reason": intent.get("reason", "fallback_default"),
-            "confidence": intent.get("confidence", 0),
+            "reason": intent.reason,
+            "confidence": intent.confidence,
             "model": model,
             "response": response,
+            "trace": trace.model_dump(),
         }
 
     def retrieve_relevant_messages(

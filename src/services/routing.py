@@ -1,6 +1,8 @@
 from config.prompts import Prompts
 from providers.groq import GroqProvider
 import json
+from schemas.classification import ClassificationResult
+from config.models import MODEL_MAP, MEDIUM_MODEL
 
 
 class IntentClassifier:
@@ -8,23 +10,25 @@ class IntentClassifier:
         self.llm_provider = llm_provider
         self.classify_model = classify_model
 
-    async def classify(self, prompt: str) -> dict:
-        user_prompt = prompt.lower()
+    async def classify(self, prompt: str) -> ClassificationResult:
+        try:
+            user_prompt = prompt.lower()
 
-        response = await self.llm_provider.generate(
-            model=self.classify_model,
-            messages=[{"role": "user", "content": Prompts.intent_detection(user_prompt)}]
-        )
-        print("Intent classification response:", response)
-        return json.loads(response)
+            response = await self.llm_provider.generate(
+                model=self.classify_model,
+                messages=[{"role": "user", "content": Prompts.intent_detection(user_prompt)}]
+            )
+            print("Intent classification response:", response)
+            return ClassificationResult(**json.loads(response))
+        except Exception as e:
+            print(f"Error in classification: {e}")
+            return ClassificationResult(
+                complexity="medium",
+                reason="classification_failed_fallback",
+                confidence=0.0
+            ) 
 
 class ModelSelector:
-    MODEL_MAP = {
-        "low": "llama-3.1-8b-instant",
-        "medium": "qwen/qwen3-32b",
-        "high": "openai/gpt-oss-120b",
-    }
-
     def select_model(self, complexity: str) -> str:
-        return self.MODEL_MAP[complexity]
+        return MODEL_MAP.get(complexity, MEDIUM_MODEL)
 
