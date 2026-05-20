@@ -28,5 +28,3 @@ class ModelSelector:
     def select_model(self, complexity: str) -> str:
         return self.MODEL_MAP[complexity]
 
-
-IntentRouter = IntentClassifier  # backward compat alias
