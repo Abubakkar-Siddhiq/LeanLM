@@ -14,7 +14,7 @@
   <h3 align="center">LeanLM</h3>
 
   <p align="center">
-    Intelligent LLM routing and memory orchestration backend
+    Route every AI request to the right model, preserve context, and cut LLM costs automatically.
     <br />
     <a href="docs/ARCHITECTURE.md"><strong>Explore the docs »</strong></a>
     <br />
