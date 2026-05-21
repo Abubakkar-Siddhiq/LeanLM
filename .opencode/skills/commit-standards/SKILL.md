@@ -1,9 +1,9 @@
 ---
 name: commit-standards
-description: Commit message format (type(scope): message), atomic commit rules, scope reference, and pre-commit checklist for Routiq. Use when committing or discussing how to structure commits.
+description: Commit message format (type(scope): message), atomic commit rules, scope reference, and pre-commit checklist for LeanLM. Use when committing or discussing how to structure commits.
 ---
 
-# Commit Standards for Routiq
+# Commit Standards for LeanLM
 
 ## Format
 
@@ -27,12 +27,12 @@ Each commit must contain **one logical change**. A commit should be safe to reve
 
 If a change touches multiple concerns, split it:
 
-| If you are… | Make commits like… |
-|---|---|
-| Refactoring + fixing | `refactor(api): ...` then `fix(chat): ...` |
-| Moving files + editing code | `update(db): ...` then `fix(chat): ...` |
-| Multiple unrelated fixes | One `fix(scope)` per fix |
-| New feature + docs | `feat: ...` then `docs: ...` |
+| If you are…                 | Make commits like…                         |
+| --------------------------- | ------------------------------------------ |
+| Refactoring + fixing        | `refactor(api): ...` then `fix(chat): ...` |
+| Moving files + editing code | `update(db): ...` then `fix(chat): ...`    |
+| Multiple unrelated fixes    | One `fix(scope)` per fix                   |
+| New feature + docs          | `feat: ...` then `docs: ...`               |
 
 ### Guidelines
 
@@ -44,17 +44,17 @@ If a change touches multiple concerns, split it:
 
 ## Scope reference
 
-| Scope | Package |
-|---|---|
-| `(api)` | `src/api/` — route structure |
-| `(chat)` | `src/api/chat/` — chat business logic |
+| Scope            | Package                                        |
+| ---------------- | ---------------------------------------------- |
+| `(api)`          | `src/api/` — route structure                   |
+| `(chat)`         | `src/api/chat/` — chat business logic          |
 | `(conversation)` | `src/api/conversation/` — conversation queries |
-| `(db)` | `src/db/` — models, session |
-| `(config)` | `src/config/` — settings, prompts |
-| `(providers)` | `src/providers/` — LLM wrappers |
-| `(memory)` | `src/memory/` — context, summarization |
-| `(skills)` | `.opencode/skills/` |
-| no scope | App-wide: `build`, `ci`, `deps`, `docs` |
+| `(db)`           | `src/db/` — models, session                    |
+| `(config)`       | `src/config/` — settings, prompts              |
+| `(providers)`    | `src/providers/` — LLM wrappers                |
+| `(memory)`       | `src/memory/` — context, summarization         |
+| `(skills)`       | `.opencode/skills/`                            |
+| no scope         | App-wide: `build`, `ci`, `deps`, `docs`        |
 
 ## Push
 

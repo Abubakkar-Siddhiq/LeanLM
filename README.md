@@ -7,11 +7,11 @@
 
 <br />
 <div align="center">
-  <a href="https://github.com/Abubakkar-Siddhiq/routiq">
+  <a href="https://github.com/Abubakkar-Siddhiq/leanlm">
     <img width="80" height="80" alt="logo" src="https://github.com/user-attachments/assets/6fa1afd6-a56b-4ba9-9f47-1c58d13a2bce" />
   </a>
   
-  <h3 align="center">Routiq</h3>
+  <h3 align="center">LeanLM</h3>
 
   <p align="center">
     Intelligent LLM routing and memory orchestration backend
@@ -21,9 +21,9 @@
     <br />
     <a href="#quick-api-checks">View Demo</a>
     &middot;
-    <a href="https://github.com/Abubakkar-Siddhiq/routiq/issues/new">Report Bug</a>
+    <a href="https://github.com/Abubakkar-Siddhiq/leanlm/issues/new">Report Bug</a>
     &middot;
-    <a href="https://github.com/Abubakkar-Siddhiq/routiq/issues/new">Request Feature</a>
+    <a href="https://github.com/Abubakkar-Siddhiq/leanlm/issues/new">Request Feature</a>
   </p>
 </div>
 
@@ -55,7 +55,7 @@
 
 ## About The Project
 
-Routiq is an AI gateway that sits between your application and LLM providers. It classifies prompt complexity, routes requests to cost-efficient models across multiple providers, maintains conversational memory with rolling summaries, and logs usage for analytics.
+LeanLM is an AI gateway that sits between your application and LLM providers. It classifies prompt complexity, routes requests to cost-efficient models across multiple providers, maintains conversational memory with rolling summaries, and logs usage for analytics.
 
 **What it does:**
 
@@ -91,8 +91,8 @@ Routiq is an AI gateway that sits between your application and LLM providers. It
 
 1. Clone the repo
    ```sh
-   git clone https://github.com/Abubakkar-Siddhiq/routiq.git
-   cd routiq
+   git clone https://github.com/Abubakkar-Siddhiq/leanlm.git
+   cd leanlm
    ```
 2. Create virtual environment
    ```sh
@@ -194,20 +194,20 @@ curl -X DELETE "http://localhost:8000/api/providers/groq"
 
 ## API Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/chat` | Send a prompt, get an LLM response |
-| `GET` | `/api/conversations` | List all conversations |
-| `GET` | `/api/conversations/{id}` | Get conversation with messages |
-| `GET` | `/api/usage/summary` | Aggregate usage stats |
-| `GET` | `/api/usage/by-model` | Usage breakdown by model |
-| `GET` | `/api/usage/by-task-type` | Usage breakdown by task type |
-| `GET` | `/api/usage/recent` | Recent LLM calls |
-| `POST` | `/api/providers` | Store an encrypted provider key |
-| `GET` | `/api/providers` | List saved providers |
-| `DELETE` | `/api/providers/{name}` | Disable a provider key |
-| `POST` | `/api/providers/{name}/validate` | Check if key is active |
-| `GET` | `/api/providers/available` | Active provider names |
+| Method   | Path                             | Description                        |
+| -------- | -------------------------------- | ---------------------------------- |
+| `POST`   | `/api/chat`                      | Send a prompt, get an LLM response |
+| `GET`    | `/api/conversations`             | List all conversations             |
+| `GET`    | `/api/conversations/{id}`        | Get conversation with messages     |
+| `GET`    | `/api/usage/summary`             | Aggregate usage stats              |
+| `GET`    | `/api/usage/by-model`            | Usage breakdown by model           |
+| `GET`    | `/api/usage/by-task-type`        | Usage breakdown by task type       |
+| `GET`    | `/api/usage/recent`              | Recent LLM calls                   |
+| `POST`   | `/api/providers`                 | Store an encrypted provider key    |
+| `GET`    | `/api/providers`                 | List saved providers               |
+| `DELETE` | `/api/providers/{name}`          | Disable a provider key             |
+| `POST`   | `/api/providers/{name}/validate` | Check if key is active             |
+| `GET`    | `/api/providers/available`       | Active provider names              |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -265,17 +265,18 @@ tests/
 
 See `.env.example` for all variables.
 
-| Variable | Required | Description |
-|---|---|---|
-| `GROQ_API_KEY` | Yes (for Groq) | Groq API key |
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `OPENAI_API_KEY` | No | OpenAI API key |
-| `ANTHROPIC_API_KEY` | No | Anthropic API key |
-| `GEMINI_API_KEY` | No | Google Gemini API key |
-| `PROVIDER_KEY_ENCRYPTION_SECRET` | For BYOK | Fernet key for encrypting stored API keys |
-| `HF_TOKEN` | No | Hugging Face token (embedder) |
+| Variable                         | Required       | Description                               |
+| -------------------------------- | -------------- | ----------------------------------------- |
+| `GROQ_API_KEY`                   | Yes (for Groq) | Groq API key                              |
+| `DATABASE_URL`                   | Yes            | PostgreSQL connection string              |
+| `OPENAI_API_KEY`                 | No             | OpenAI API key                            |
+| `ANTHROPIC_API_KEY`              | No             | Anthropic API key                         |
+| `GEMINI_API_KEY`                 | No             | Google Gemini API key                     |
+| `PROVIDER_KEY_ENCRYPTION_SECRET` | For BYOK       | Fernet key for encrypting stored API keys |
+| `HF_TOKEN`                       | No             | Hugging Face token (embedder)             |
 
 Generate the encryption secret with:
+
 ```sh
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
@@ -287,6 +288,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 See the [architecture docs](docs/ARCHITECTURE.md#10-next-roadmap) for the full roadmap.
 
 High-level priorities:
+
 - Wire BYOK into routing (replace env-based provider availability)
 - Async provider overhaul (replace deprecated SDKs)
 - Dynamic scoring router with latency-cost-quality tradeoffs
@@ -315,18 +317,18 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Contact
 
-Project Link: [https://github.com/Abubakkar-Siddhiq/routiq](https://github.com/Abubakkar-Siddhiq/routiq)
+Project Link: [https://github.com/Abubakkar-Siddhiq/leanlm](https://github.com/Abubakkar-Siddhiq/leanlm)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-[contributors-shield]: https://img.shields.io/github/contributors/Abubakkar-Siddhiq/routiq.svg?style=for-the-badge
-[contributors-url]: https://github.com/Abubakkar-Siddhiq/routiq/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/Abubakkar-Siddhiq/routiq.svg?style=for-the-badge
-[forks-url]: https://github.com/Abubakkar-Siddhiq/routiq/network/members
-[stars-shield]: https://img.shields.io/github/stars/Abubakkar-Siddhiq/routiq.svg?style=for-the-badge
-[stars-url]: https://github.com/Abubakkar-Siddhiq/routiq/stargazers
-[issues-shield]: https://img.shields.io/github/issues/Abubakkar-Siddhiq/routiq.svg?style=for-the-badge
-[issues-url]: https://github.com/Abubakkar-Siddhiq/routiq/issues
+[contributors-shield]: https://img.shields.io/github/contributors/Abubakkar-Siddhiq/leanlm.svg?style=for-the-badge
+[contributors-url]: https://github.com/Abubakkar-Siddhiq/leanlm/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/Abubakkar-Siddhiq/leanlm.svg?style=for-the-badge
+[forks-url]: https://github.com/Abubakkar-Siddhiq/leanlm/network/members
+[stars-shield]: https://img.shields.io/github/stars/Abubakkar-Siddhiq/leanlm.svg?style=for-the-badge
+[stars-url]: https://github.com/Abubakkar-Siddhiq/leanlm/stargazers
+[issues-shield]: https://img.shields.io/github/issues/Abubakkar-Siddhiq/leanlm.svg?style=for-the-badge
+[issues-url]: https://github.com/Abubakkar-Siddhiq/leanlm/issues
 [FastAPI.com]: https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white
 [FastAPI-url]: https://fastapi.tiangolo.com/
 [Python.org]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white

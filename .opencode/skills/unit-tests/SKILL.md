@@ -1,11 +1,11 @@
 ---
 name: unit-tests
-description: Write and run unit tests for Routiq covering models, providers, services, memory, and config in isolation with mocked dependencies
+description: Write and run unit tests for LeanLM covering models, providers, services, memory, and config in isolation with mocked dependencies
 ---
 
 ## What I do
 
-I write unit tests that verify individual Routiq components in isolation. All external dependencies (DB, Groq API, tiktoken) must be mocked. Tests use pytest with pytest-mock, run against an in-memory SQLite SQLModel engine, and avoid any real network or database calls.
+I write unit tests that verify individual LeanLM components in isolation. All external dependencies (DB, Groq API, tiktoken) must be mocked. Tests use pytest with pytest-mock, run against an in-memory SQLite SQLModel engine, and avoid any real network or database calls.
 
 ## Test layout
 
@@ -21,27 +21,32 @@ Place a `conftest.py` at `/tests/unit/` (and/or sub-packages) with shared fixtur
 ## Testing patterns by module
 
 ### `src/db/models.py`
+
 - Create `Conversation` and `Message` instances with valid/edge-case field values
 - Verify UUIDs are auto-generated, timestamps are UTC, relationships work
 - Use an in-memory SQLite engine (`sqlite:///:memory:`) with `SQLModel.metadata.create_all`
 
 ### `src/providers/groq.py` (GroqProvider)
+
 - Mock the module-level `groq.Groq` client entirely — never hit the real API
 - Mock `client.chat.completions.create` return value to simulate API responses
 - Test `generate(model, messages)` returns expected content string
 - Verify the mock was called with correct `model` and `messages` args
 
 ### `src/config/prompts.py` (Prompts)
+
 - Test `intent_detection(prompt)` returns expected template for known prompt types (greeting, technical, complex)
 - Test `system_prompt()` returns non-empty string
 - Don't test the LLM output — only that the static method returns a string containing expected keywords
 
 ### `src/config/settings.py` (Settings)
+
 - Test that `Settings` loads from env with `pydantic_settings`
 - Override `DATABASE_URL` and `GROQ_API_KEY` via monkeypatch on `os.environ`
 - Verify `settings.DATABASE_URL` and `settings.GROQ_API_KEY` match overrides
 
 ### `src/memory/context_builder.py` (ContextBuilder)
+
 - Mock `tiktoken.get_encoding` to return a deterministic tokenizer stub
 - Test `count(text)` returns expected token count
 - Test `score_message(msg)` returns correct scores for different message types (user vs assistant, code blocks, questions, long messages, keyword messages)
@@ -53,6 +58,7 @@ Place a `conftest.py` at `/tests/unit/` (and/or sub-packages) with shared fixtur
   - Does not exceed max_tokens
 
 ### `src/memory/summarizer.py` (Summarizer)
+
 - Mock `GroqProvider.generate` — test that `summarize` calls provider with correct prompt
 - Test `should_summarize(conversation, messages, context_tokens)` with:
   - Below threshold returns False
@@ -66,6 +72,7 @@ Place a `conftest.py` at `/tests/unit/` (and/or sub-packages) with shared fixtur
   - Calls `session.commit` at the end
 
 ### `src/api/chat/services.py` (ChatService)
+
 - Mock `GroqProvider`, `ContextBuilder`, `Summarizer`, and the DB session entirely
 - Test `find_intent(prompt)` — mock `llm_provider.generate` to return a valid JSON string, verify parsed dict
 - Test `select_model(complexity)` — returns correct model for each tier
@@ -82,6 +89,7 @@ Place a `conftest.py` at `/tests/unit/` (and/or sub-packages) with shared fixtur
 - Test summarization trigger condition (when should_summarize returns True, background task is added)
 
 ### `src/api/conversation/services.py` (ConversationService)
+
 - Mock the DB session
 - Test `get_conversations` returns list ordered by `created_at.desc()`
 - Test `get_conversation_messages` returns conversation with messages

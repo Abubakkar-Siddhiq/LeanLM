@@ -2,10 +2,10 @@ class Prompts:
     @staticmethod
     def intent_detection(user_prompt: str) -> str:
         return f"""
-            You are a request classifier for an AI routing system called Routiq.
+            You are a request classifier for an AI routing system called LeanLM.
 
             Your job:
-            Classify the user's prompt so Routiq can route it to the most cost-efficient and capable LLM.
+            Classify the user's prompt so LeanLM can route it to the most cost-efficient and capable LLM.
 
             Return:
             - task_type

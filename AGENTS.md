@@ -1,4 +1,4 @@
-# Routiq
+# LeanLM
 
 LLM routing system — classifies prompt complexity (low/medium/high) and dispatches to different Groq-hosted models.
 
@@ -23,22 +23,22 @@ The working tree has in-progress changes with several issues. Before the code ru
 
 ## Structure
 
-| Path | Role |
-|---|---|---|
-| `src/main.py` | FastAPI app entrypoint, includes `/api` routers |
-| `src/api/chat/views.py` | Route: `POST /api/chat` |
-| `src/api/chat/services.py` | Business logic: conversation lifecycle, message persistence |
-| `src/api/chat/schema.py` | Pydantic request schema (`ChatRequest`) |
-| `src/api/conversation/views.py` | Routes: `GET /api/conversations[/{id}]` |
-| `src/api/conversation/services.py` | Query logic for conversations and their messages |
-| `src/services/routing.py` | Intent classification + model selection (`IntentRouter`) |
-| `src/db/models.py` | SQLModel tables: `Conversation`, `Message` |
-| `src/config/settings.py` | `DATABASE_URL`, `GROQ_API_KEY` from `.env` |
-| `src/config/prompts.py` | Static prompt templates (`intent_detection`, `system_prompt`) |
-| `src/providers/groq.py` | Groq API wrapper (module-level client init, sync SDK in async method) |
-| `src/db/session.py` | SQLModel engine + session factory, auto-creates tables on startup |
-| `src/memory/context_builder.py` | Token-aware context window with scoring/eviction |
-| `src/memory/summarizer.py` | Background summarization trigger + LLM call |
+| Path                               | Role                                                                  |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| `src/main.py`                      | FastAPI app entrypoint, includes `/api` routers                       |
+| `src/api/chat/views.py`            | Route: `POST /api/chat`                                               |
+| `src/api/chat/services.py`         | Business logic: conversation lifecycle, message persistence           |
+| `src/api/chat/schema.py`           | Pydantic request schema (`ChatRequest`)                               |
+| `src/api/conversation/views.py`    | Routes: `GET /api/conversations[/{id}]`                               |
+| `src/api/conversation/services.py` | Query logic for conversations and their messages                      |
+| `src/services/routing.py`          | Intent classification + model selection (`IntentRouter`)              |
+| `src/db/models.py`                 | SQLModel tables: `Conversation`, `Message`                            |
+| `src/config/settings.py`           | `DATABASE_URL`, `GROQ_API_KEY` from `.env`                            |
+| `src/config/prompts.py`            | Static prompt templates (`intent_detection`, `system_prompt`)         |
+| `src/providers/groq.py`            | Groq API wrapper (module-level client init, sync SDK in async method) |
+| `src/db/session.py`                | SQLModel engine + session factory, auto-creates tables on startup     |
+| `src/memory/context_builder.py`    | Token-aware context window with scoring/eviction                      |
+| `src/memory/summarizer.py`         | Background summarization trigger + LLM call                           |
 
 ## Architecture notes
 
@@ -55,11 +55,11 @@ The working tree has in-progress changes with several issues. Before the code ru
 
 ```
 GROQ_API_KEY=...
-DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5432/routiq
+DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5432/leanlm
 ```
 
 ## Branch
 
-Working on `develop`; `origin` at `https://github.com/Abubakkar-Siddhiq/routiq`.
+Working on `develop`; `origin` at `https://github.com/Abubakkar-Siddhiq/leanlm`.
 
 To setup: `python -m venv venv`, `.\venv\Scripts\Activate.ps1`, `pip install -r requirements.txt`.

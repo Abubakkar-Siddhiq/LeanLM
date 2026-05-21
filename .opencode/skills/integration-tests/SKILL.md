@@ -1,11 +1,11 @@
 ---
 name: integration-tests
-description: Write and run integration tests for Routiq covering the full request cycle through FastAPI, services, DB, and external providers with testcontainers and real Groq API
+description: Write and run integration tests for LeanLM covering the full request cycle through FastAPI, services, DB, and external providers with testcontainers and real Groq API
 ---
 
 ## What I do
 
-I write integration tests that exercise Routiq's full stack — FastAPI endpoints through service orchestration, database persistence, and real external provider calls (Groq API). Tests use `testcontainers` for PostgreSQL (via `tc.postgres()`) and inject real Groq API keys from the environment. These tests validate that components wire together correctly and that the system behaves correctly end-to-end.
+I write integration tests that exercise LeanLM's full stack — FastAPI endpoints through service orchestration, database persistence, and real external provider calls (Groq API). Tests use `testcontainers` for PostgreSQL (via `tc.postgres()`) and inject real Groq API keys from the environment. These tests validate that components wire together correctly and that the system behaves correctly end-to-end.
 
 ## Test layout
 
@@ -83,45 +83,54 @@ def client(db_engine):
 ## Test cases: `test_chat_flow.py`
 
 ### Full chat roundtrip
+
 - Send `POST /api/chat` with a simple prompt (e.g., "What is 2+2?")
 - Verify 200 and that the response contains real LLM output
 - Verify a `Conversation` row and two `Message` rows (user + assistant) exist in the database
 - Verify `conversation.message_count == 2`
 
 ### Multi-turn conversation
+
 - Send 3 sequential messages with the same `conversation_id`
 - After each, verify `message_count` increments correctly (2, 4, 6)
 - Verify all 6 messages are retrievable via `GET /api/conversations/{id}`
 
 ### Intent classification integration
+
 - For a simple prompt, verify `intent` is `"low"` and `confidence` is at least `"low"`
 - For a complex prompt (e.g., "Design a microservice architecture for an e-commerce platform"), verify `intent` is `"high"` or `"medium"`
 
 ### Empty conversation — retry
+
 - Send prompt with conversation_id after a previous conversation completed
 - Verify the assistant continues the conversation contextually
 
 ## Test cases: `test_conversation_flow.py`
 
 ### List after inserts
+
 - Run 2 chat sessions (different conversation_ids)
 - `GET /api/conversations` returns both, ordered by creation time descending
 
 ### Get with messages
+
 - Run a chat session with 2 user prompts
 - `GET /api/conversations/{id}` returns the conversation with all 4 messages (2 user + 2 assistant)
 
 ### Delete cascade
+
 - Conversations without direct delete endpoint — verify by checking no orphan messages after conversation removal via session.delete
 
 ## Test cases: `test_summarization.py`
 
 ### Should summarize
+
 - Insert a conversation with `message_count = 30` and `last_summarized_at_count = 5` (15+ new messages)
 - Run `should_summarize` directly (unit-test-style but with real DB)
 - Verify it returns True
 
 ### Background summarization run
+
 - Create a conversation with 25 messages
 - Mock `GroqProvider.generate` to return a fake summary
 - Call `Summarizer.run_summarization` with a real DB session

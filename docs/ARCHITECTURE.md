@@ -1,14 +1,14 @@
-# Routiq Architecture
+# LeanLM Architecture
 
-## 1. What Routiq Is
+## 1. What LeanLM Is
 
-Routiq is an **AI gateway** — a FastAPI service that sits between a user and LLM providers. It does three things:
+LeanLM is an **AI gateway** — a FastAPI service that sits between a user and LLM providers. It does three things:
 
 - **Model router**: every incoming prompt is classified by complexity (low/medium/high) and task type, then dispatched to a cost-appropriate model from any configured provider.
 - **Conversation engine**: manages multi-turn conversations with PostgreSQL persistence, semantic retrieval, and lazy summarization.
 - **Usage analytics layer**: logs every LLM call with token counts, latency, and cost estimates, exposed via dashboard-friendly API endpoints.
 
-Routiq supports **four providers** (Groq, OpenAI, Anthropic, Google) through a common adapter pattern, with provider availability-aware routing and Fernet-encrypted BYOK key storage.
+LeanLM supports **four providers** (Groq, OpenAI, Anthropic, Google) through a common adapter pattern, with provider availability-aware routing and Fernet-encrypted BYOK key storage.
 
 ## 2. Current Request Flow
 
@@ -51,6 +51,7 @@ The orchestration hub. Owns the full chat lifecycle — validation, persistence,
 ### ChatPromptBuilder (`src/services/prompt_builder.py`)
 
 Assembles the `messages` list sent to the LLM. Build order:
+
 1. System prompt (from `Prompts.system_prompt()`)
 2. Conversation summary (if available)
 3. Relevant past messages (from semantic retrieval)
@@ -69,6 +70,7 @@ Decides which model to call based on the classified `task_type` and `complexity`
 Factory and registry for all provider adapters. Lazy-imports each provider module on first request. Provides `available_providers()` which checks env-sourced API keys (`GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`). This is used as a fallback when no BYOK keys are stored. Respects `ALLOW_ENV_PROVIDER_FALLBACK` setting — returns `[]` when `false` (production mode, BYOK-only).
 
 **Provider availability priority at runtime:**
+
 1. BYOK active stored keys (from `ProviderKeyService.get_available_providers(session)`)
 2. Env-configured keys (from `ProviderFactory.available_providers()`) — local development fallback
 
@@ -76,12 +78,12 @@ When executing a provider call, BYOK keys are preferred: `ProviderKeyService.get
 
 ### Provider Adapters (`src/providers/`)
 
-| Provider | File | SDK | Async |
-|---|---|---|---|
-| Groq | `groq.py` | `groq` (sync) | Blocks event loop |
-| OpenAI | `openai.py` | `openai` (AsyncOpenAI) | Native async |
-| Anthropic | `anthropic.py` | `anthropic` (AsyncAnthropic) | Native async |
-| Google | `google.py` | `google-generativeai` (sync) | Wrapped in `run_in_executor` |
+| Provider  | File           | SDK                          | Async                        |
+| --------- | -------------- | ---------------------------- | ---------------------------- |
+| Groq      | `groq.py`      | `groq` (sync)                | Blocks event loop            |
+| OpenAI    | `openai.py`    | `openai` (AsyncOpenAI)       | Native async                 |
+| Anthropic | `anthropic.py` | `anthropic` (AsyncAnthropic) | Native async                 |
+| Google    | `google.py`    | `google-generativeai` (sync) | Wrapped in `run_in_executor` |
 
 All adapters implement `generate(model, messages, api_key=None) → LLMResponse` and resolve API keys inside `generate()`:
 
@@ -100,6 +102,7 @@ Creates and persists `LLMUsageLog` records after every successful chat completio
 ### Usage Analytics API (`src/api/usage/`)
 
 Four read-only endpoints that query `LLMUsageLog`:
+
 - `GET /api/usage/summary` — aggregate stats
 - `GET /api/usage/by-model` — breakdown by provider/model
 - `GET /api/usage/by-task-type` — breakdown by task type
@@ -255,23 +258,24 @@ Loads from `.env` via `pydantic-settings`. Fields: `DATABASE_URL`, `GROQ_API_KEY
 **Provider key fallback:** `ALLOW_ENV_PROVIDER_FALLBACK` (default `True`) controls whether providers fall back to env-configured keys when no BYOK key is provided. Set to `false` in production when BYOK is required.
 
 **Provider key priority:**
+
 1. BYOK stored key (passed as `api_key` to `generate()`)
 2. Env key fallback — only when `ALLOW_ENV_PROVIDER_FALLBACK=true`
 3. `ValueError` if neither is available
 
 ## 7. Design Patterns Used
 
-| Pattern | Where | Why |
-|---|---|---|
-| **Service Layer** | `ChatService`, `ConversationService`, `ProviderKeyService`, `UsageAnalytics` | Business logic lives in service classes, not in route handlers. Views are thin wrappers. |
-| **Adapter Pattern** | `GroqProvider`, `OpenAIProvider`, `AnthropicProvider`, `GoogleProvider` | Wraps third-party SDKs behind a uniform `generate(model, messages) → LLMResponse` interface. |
-| **Factory Pattern** | `ProviderFactory` | Lazy provider instantiation and registry. Decouples provider construction from consumption. |
-| **Strategy Pattern** | `ModelSelector`, `IntentClassifier` | Routing and classification strategies can be swapped without changing callers. |
-| **DTO/Schema Pattern** | `ClassificationResult`, `RouteDecision`, `LLMResponse` | Explicit data contracts between layers. No raw dicts. |
-| **Builder Pattern** | `ChatPromptBuilder.build()` | Assembles a complex `messages` list from multiple sources (system prompt, summary, relevant messages, history). |
-| **Chain of Responsibility (ish)** | `_generate_with_fallbacks()` | Tries a chain of models in order until one succeeds or all fail. |
-| **Configuration-Driven Routing** | `ROUTING_RULES` | Routing decisions are declarative data, not hard-coded if/else chains. |
-| **Dependency Injection (manual)** | `ChatService.__init__` | Dependencies (provider, classifier, selector, logger) are instantiated in the constructor. |
+| Pattern                           | Where                                                                        | Why                                                                                                             |
+| --------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Service Layer**                 | `ChatService`, `ConversationService`, `ProviderKeyService`, `UsageAnalytics` | Business logic lives in service classes, not in route handlers. Views are thin wrappers.                        |
+| **Adapter Pattern**               | `GroqProvider`, `OpenAIProvider`, `AnthropicProvider`, `GoogleProvider`      | Wraps third-party SDKs behind a uniform `generate(model, messages) → LLMResponse` interface.                    |
+| **Factory Pattern**               | `ProviderFactory`                                                            | Lazy provider instantiation and registry. Decouples provider construction from consumption.                     |
+| **Strategy Pattern**              | `ModelSelector`, `IntentClassifier`                                          | Routing and classification strategies can be swapped without changing callers.                                  |
+| **DTO/Schema Pattern**            | `ClassificationResult`, `RouteDecision`, `LLMResponse`                       | Explicit data contracts between layers. No raw dicts.                                                           |
+| **Builder Pattern**               | `ChatPromptBuilder.build()`                                                  | Assembles a complex `messages` list from multiple sources (system prompt, summary, relevant messages, history). |
+| **Chain of Responsibility (ish)** | `_generate_with_fallbacks()`                                                 | Tries a chain of models in order until one succeeds or all fail.                                                |
+| **Configuration-Driven Routing**  | `ROUTING_RULES`                                                              | Routing decisions are declarative data, not hard-coded if/else chains.                                          |
+| **Dependency Injection (manual)** | `ChatService.__init__`                                                       | Dependencies (provider, classifier, selector, logger) are instantiated in the constructor.                      |
 
 ## 8. What Is Done
 
@@ -314,32 +318,38 @@ Loads from `.env` via `pydantic-settings`. Fields: `DATABASE_URL`, `GROQ_API_KEY
 ## 10. Next Roadmap
 
 ### Phase 1: Stabilize Current API
+
 - Add real cost tables per model
 - Persist fallback fields to LLMUsageLog
 - Add request validation and error standardization
 - Set up ruff + formatting
 
 ### Phase 2: Wire BYOK into Routing
+
 - Replace env-based `ProviderFactory.available_providers()` with `ProviderKeyService.get_available_providers()`
 - Add user_id to ProviderKey model when auth is implemented
 - Real provider API key validation (test connectivity)
 
 ### Phase 3: Async Provider Overhaul
+
 - Replace sync `GroqProvider` with native async SDK
 - Replace deprecated `google-generativeai` with `google.genai`
 - Add provider health checks
 
 ### Phase 4: Dynamic Scoring Router
+
 - Replace ROUTING_RULES with a scoring/weight system
 - Latency-cost-quality tradeoff configurable per tenant
 - A/B testing between models
 
 ### Phase 5: OpenAI-Compatible Endpoint
+
 - `/v1/chat/completions` proxy with routing headers
 - Streaming support (SSE)
 - Drop-in replacement for existing OpenAI clients
 
 ### Phase 6: Dashboard Polish
+
 - Usage analytics charts and exports
 - Real-time request tracing
 - Cost alerts and budgets

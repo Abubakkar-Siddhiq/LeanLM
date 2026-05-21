@@ -1,12 +1,12 @@
 services:
   db:
     image: pgvector/pgvector:pg16
-    container_name: routiq-db
+    container_name: leanlm-db
 
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: routiq
+      POSTGRES_DB: leanlm
 
     ports:
       - "5432:5432"
