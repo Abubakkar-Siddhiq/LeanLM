@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
+    PROVIDER_KEY_ENCRYPTION_SECRET: str = ""
     HF_TOKEN: str = ""
 
 
