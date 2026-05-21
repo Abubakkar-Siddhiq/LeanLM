@@ -4,18 +4,17 @@ from schemas.llm import LLMResponse
 
 
 class OpenAIProvider:
-    def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
-        self._client = None
-        if api_key:
-            from openai import AsyncOpenAI
-            self._client = AsyncOpenAI(api_key=api_key)
-
-    async def generate(self, model: str, messages: list) -> LLMResponse:
-        if not self._client:
+    async def generate(self, model: str, messages: list, api_key: str | None = None) -> LLMResponse:
+        from config.settings import settings
+        resolved_key = api_key
+        if settings.ALLOW_ENV_PROVIDER_FALLBACK:
+            resolved_key = resolved_key or os.getenv("OPENAI_API_KEY")
+        if not resolved_key:
             raise ValueError("OPENAI_API_KEY not set")
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=resolved_key)
         start = time.monotonic()
-        completion = await self._client.chat.completions.create(
+        completion = await client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=0.7,

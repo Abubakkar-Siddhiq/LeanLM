@@ -4,18 +4,17 @@ from schemas.llm import LLMResponse
 
 
 class AnthropicProvider:
-    def __init__(self):
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        self._client = None
-        if api_key:
-            from anthropic import AsyncAnthropic
-            self._client = AsyncAnthropic(api_key=api_key)
-
-    async def generate(self, model: str, messages: list) -> LLMResponse:
-        if not self._client:
+    async def generate(self, model: str, messages: list, api_key: str | None = None) -> LLMResponse:
+        from config.settings import settings
+        resolved_key = api_key
+        if settings.ALLOW_ENV_PROVIDER_FALLBACK:
+            resolved_key = resolved_key or os.getenv("ANTHROPIC_API_KEY")
+        if not resolved_key:
             raise ValueError("ANTHROPIC_API_KEY not set")
+        from anthropic import AsyncAnthropic
+        client = AsyncAnthropic(api_key=resolved_key)
         start = time.monotonic()
-        response = await self._client.messages.create(
+        response = await client.messages.create(
             model=model,
             messages=messages,
             max_tokens=4096,

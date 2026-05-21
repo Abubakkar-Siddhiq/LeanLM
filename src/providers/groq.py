@@ -1,24 +1,20 @@
 import os
 import time
-from dotenv import load_dotenv
 from schemas.llm import LLMResponse
-
-load_dotenv()
 
 
 class GroqProvider:
-    def __init__(self):
-        api_key = os.getenv("GROQ_API_KEY")
-        self._client = None
-        if api_key:
-            from groq import Groq
-            self._client = Groq(api_key=api_key)
-
-    async def generate(self, model: str, messages: list) -> LLMResponse:
-        if not self._client:
+    async def generate(self, model: str, messages: list, api_key: str | None = None) -> LLMResponse:
+        from config.settings import settings
+        resolved_key = api_key
+        if settings.ALLOW_ENV_PROVIDER_FALLBACK:
+            resolved_key = resolved_key or os.getenv("GROQ_API_KEY")
+        if not resolved_key:
             raise ValueError("GROQ_API_KEY not set")
+        from groq import Groq
+        client = Groq(api_key=resolved_key)
         start = time.monotonic()
-        completion = self._client.chat.completions.create(
+        completion = client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=0.7,
