@@ -1,4 +1,4 @@
-"""Unit tests for ChatService fallback execution — mocks GroqProvider."""
+"""Unit tests for ChatService fallback execution — mocks providers."""
 
 import sys
 import os
@@ -20,11 +20,9 @@ pytestmark = pytest.mark.asyncio
 
 @pytest.fixture
 def chat_service():
-    with patch("api.chat.services.GroqProvider") as mock_provider_cls:
-        mock_provider = AsyncMock()
-        mock_provider_cls.return_value = mock_provider
+    mock_provider = AsyncMock()
+    with patch("api.chat.services.ProviderFactory.get", return_value=mock_provider):
         service = ChatService()
-        service.llm_provider = mock_provider
         yield service, mock_provider
 
 

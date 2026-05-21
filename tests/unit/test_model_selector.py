@@ -175,10 +175,7 @@ class TestModelSelector:
         )
         route = selector.select(intent)
 
-        assert route.fallback_models == [
-            "openai/gpt-oss-120b",
-            "llama-3.1-8b-instant",
-        ]
+        assert route.fallback_models == ["llama-3.1-8b-instant"]
 
     def test_fallback_models_included_for_high(self, selector):
         intent = ClassificationResult(
@@ -189,7 +186,7 @@ class TestModelSelector:
         )
         route = selector.select(intent)
 
-        assert route.fallback_models == ["qwen/qwen3-32b"]
+        assert route.fallback_models == ["gpt-4o"]
 
     def test_fallback_models_removes_primary_model(self, selector):
         intent = ClassificationResult(
@@ -215,3 +212,24 @@ class TestModelSelector:
         assert route.fallback_used is False
         assert route.fallback_model is None
         assert route.fallback_error is None
+
+    def test_provider_from_routing_rule(self, selector):
+        intent = ClassificationResult(
+            task_type="simple_qa",
+            complexity="low",
+            confidence=0.95,
+            reason="Simple query.",
+        )
+        route = selector.select(intent)
+        assert route.provider == "groq"
+
+    def test_high_reasoning_routes_to_openai_provider(self, selector):
+        intent = ClassificationResult(
+            task_type="reasoning",
+            complexity="high",
+            confidence=0.98,
+            reason="Architecture decisions.",
+        )
+        route = selector.select(intent)
+        assert route.provider == "openai"
+        assert route.model == "openai/gpt-oss-120b"
