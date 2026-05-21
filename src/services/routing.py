@@ -16,13 +16,14 @@ class IntentClassifier:
         self.llm_provider = llm_provider
         self.classify_model = classify_model
 
-    async def classify(self, prompt: str) -> ClassificationResult:
+    async def classify(self, prompt: str, api_key: str | None = None) -> ClassificationResult:
         try:
             user_prompt = prompt.lower()
 
             llm_response = await self.llm_provider.generate(
                 model=self.classify_model,
-                messages=[{"role": "user", "content": Prompts.intent_detection(user_prompt)}]
+                messages=[{"role": "user", "content": Prompts.intent_detection(user_prompt)}],
+                api_key=api_key,
             )
             response = llm_response.content
             print("Intent classification response:", response)

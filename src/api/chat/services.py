@@ -21,6 +21,7 @@ from services.embedder import Embedder
 from services.prompt_builder import ChatPromptBuilder
 from services.routing import IntentClassifier, ModelSelector
 from services.usage_logger import UsageLogger
+from api.providers.services import ProviderKeyService
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 class ChatService:
     def __init__(self):
         self.llm_provider = ProviderFactory.get("groq")
+        self.provider_key_service = ProviderKeyService()
         self.context_builder = ContextBuilder()
         self.summarizer = Summarizer()
         self.local_model = CLASSIFIER_MODEL
@@ -157,9 +159,11 @@ class ChatService:
         self,
         route: RouteDecision,
         context: list[dict[str, str]],
-    ) -> tuple[LLMResponse, RouteDecision]:
+        session: Session,
+    ) -> tuple[LLMResponse, RouteDecision, str]:
         first_error: str | None = None
         models_to_try = [route.model] + route.fallback_models
+        provider_source = "env"
 
         for model in models_to_try:
             try:
@@ -168,7 +172,14 @@ class ChatService:
                 if not provider:
                     logger.warning("No provider registered for %s, skipping model %s", provider_name, model)
                     continue
-                llm_response = await provider.generate(model=model, messages=context)
+
+                api_key = self.provider_key_service.get_decrypted_api_key(session, provider_name)
+                if api_key:
+                    provider_source = "byok"
+                else:
+                    provider_source = "env"
+
+                llm_response = await provider.generate(model=model, messages=context, api_key=api_key)
 
                 if model != route.model:
                     route.fallback_used = True
@@ -176,7 +187,7 @@ class ChatService:
                     route.fallback_error = first_error[:500] if first_error else None
                     logger.info("Fallback to %s succeeded", model)
 
-                return llm_response, route
+                return llm_response, route, provider_source
             except Exception as e:
                 if model == route.model:
                     first_error = str(e)
@@ -220,11 +231,27 @@ class ChatService:
             relevant_messages=relevant_messages,
         )
 
-        intent = await self.classifier.classify(prompt)
-        available_providers = ProviderFactory.available_providers()
+        groq_key = self.provider_key_service.get_decrypted_api_key(session, "groq")
+        intent = await self.classifier.classify(prompt, api_key=groq_key)
+
+        byok_providers = self.provider_key_service.get_available_providers(session)
+        if byok_providers:
+            available_providers = byok_providers
+        else:
+            available_providers = ProviderFactory.available_providers()
+
+        if not available_providers:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "provider_unavailable",
+                    "message": "No active provider key found. Add a provider key to continue.",
+                },
+            )
+
         route = self.model_selector.select(intent, available_providers=available_providers)
 
-        llm_response, route = await self._generate_with_fallbacks(route, context)
+        llm_response, route, provider_source = await self._generate_with_fallbacks(route, context, session)
         response = llm_response.content
 
         actual_model = route.fallback_model if route.fallback_used else route.model
@@ -282,6 +309,7 @@ class ChatService:
             "fallback_model": route.fallback_model,
             "fallback_error": route.fallback_error,
             "available_providers": available_providers,
+            "provider_source": provider_source,
             "response": response,
             "usage": {
                 "input_tokens": llm_response.input_tokens,
