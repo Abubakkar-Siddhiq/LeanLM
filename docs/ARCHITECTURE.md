@@ -23,7 +23,9 @@ User prompt (POST /api/chat)
 │   ├─ retrieve_relevant_messages() → semantic search (cosine sim)
 │   ├─ prompt_builder.build()      → system + summary + relevant + history
 │   ├─ classifier.classify()       → LLM-based complexity & task type
-│   ├─ ProviderFactory.available_providers()  → which providers have keys
+│   ├─ BYOK or env provider availability
+│   │   ├─ ProviderKeyService.get_available_providers()  → BYOK active keys
+│   │   └─ fallback: ProviderFactory.available_providers() → env keys
 │   ├─ model_selector.select(available_providers) → pick model from routing config
 │   │   └─ filters ROUTING_RULES to available providers only
 │   ├─ _generate_with_fallbacks()  → try primary, then same-provider fallback chain
@@ -44,7 +46,7 @@ User prompt (POST /api/chat)
 
 ### ChatService (`src/api/chat/services.py`)
 
-The orchestration hub. Owns the full chat lifecycle — validation, persistence, context assembly, provider resolution, model invocation (with fallback), usage logging, and summarization scheduling.
+The orchestration hub. Owns the full chat lifecycle — validation, persistence, context assembly, provider resolution, model invocation (with BYOK key resolution and fallback), usage logging, and summarization scheduling.
 
 ### ChatPromptBuilder (`src/services/prompt_builder.py`)
 
@@ -64,7 +66,13 @@ Decides which model to call based on the classified `task_type` and `complexity`
 
 ### ProviderFactory (`src/providers/__init__.py`)
 
-Factory and registry for all provider adapters. Lazy-imports each provider module on first request. Provides `available_providers()` which checks env-sourced API keys (`GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`).
+Factory and registry for all provider adapters. Lazy-imports each provider module on first request. Provides `available_providers()` which checks env-sourced API keys (`GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`). This is used as a fallback when no BYOK keys are stored. Respects `ALLOW_ENV_PROVIDER_FALLBACK` setting — returns `[]` when `false` (production mode, BYOK-only).
+
+**Provider availability priority at runtime:**
+1. BYOK active stored keys (from `ProviderKeyService.get_available_providers(session)`)
+2. Env-configured keys (from `ProviderFactory.available_providers()`) — local development fallback
+
+When executing a provider call, BYOK keys are preferred: `ProviderKeyService.get_decrypted_api_key()` is called for the selected provider. If a BYOK key exists, it's passed as `api_key` to the provider's `generate()` method. If no BYOK key exists, the provider falls back to its env-configured client (via `api_key=None`).
 
 ### Provider Adapters (`src/providers/`)
 
@@ -75,7 +83,11 @@ Factory and registry for all provider adapters. Lazy-imports each provider modul
 | Anthropic | `anthropic.py` | `anthropic` (AsyncAnthropic) | Native async |
 | Google | `google.py` | `google-generativeai` (sync) | Wrapped in `run_in_executor` |
 
-All adapters implement `generate(model, messages) → LLMResponse` and use lazy client initialization (no module-level crashes when API keys are missing).
+All adapters implement `generate(model, messages, api_key=None) → LLMResponse` and resolve API keys inside `generate()`:
+
+1. BYOK `api_key` param (if provided)
+2. Env key fallback (only when `settings.ALLOW_ENV_PROVIDER_FALLBACK=True`)
+3. `ValueError` if no key resolved
 
 ### UsageTracker (`src/services/usage_tracker.py`)
 
@@ -239,6 +251,13 @@ Four data structures that control the entire routing logic:
 ### `src/config/settings.py`
 
 Loads from `.env` via `pydantic-settings`. Fields: `DATABASE_URL`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `PROVIDER_KEY_ENCRYPTION_SECRET`, `HF_TOKEN`. All API key fields default to `""`.
+
+**Provider key fallback:** `ALLOW_ENV_PROVIDER_FALLBACK` (default `True`) controls whether providers fall back to env-configured keys when no BYOK key is provided. Set to `false` in production when BYOK is required.
+
+**Provider key priority:**
+1. BYOK stored key (passed as `api_key` to `generate()`)
+2. Env key fallback — only when `ALLOW_ENV_PROVIDER_FALLBACK=true`
+3. `ValueError` if neither is available
 
 ## 7. Design Patterns Used
 

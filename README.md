@@ -59,7 +59,7 @@ Routiq is an AI gateway that sits between your application and LLM providers. It
 
 **What it does:**
 
-- **Smart routing** — every prompt is classified by complexity (low/medium/high) and task type, then dispatched to the most cost-effective model across Groq, OpenAI, Anthropic, or Google.
+- **Smart routing** — every prompt is classified by complexity (low/medium/high) and task type, then dispatched to the most cost-effective model across Groq, OpenAI, Anthropic, or Google. Provider availability priority: BYOK stored keys → env-configured keys.
 - **Fallback resilience** — if the primary model fails, same-provider fallback models are tried before giving up.
 - **Provider-aware** — routing automatically adapts to which API keys you've configured. Missing a key? That provider's models are skipped.
 - **Conversation memory** — multi-turn conversations with semantic retrieval (pgvector) and lazy background summarization.
