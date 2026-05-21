@@ -21,6 +21,8 @@ class UsageLogger:
         estimated_cost: float,
         latency_ms: float | None,
     ) -> LLMUsageLog:
+        # TODO: persist fallback fields (fallback_used, fallback_model, fallback_error)
+        # when LLMUsageLog table is updated with those columns
         log = LLMUsageLog(
             conversation_id=conversation_id,
             user_message_id=user_message_id,

@@ -8,6 +8,8 @@ from db.models import Conversation, Message
 from db.session import SessionLocal
 from providers.groq import GroqProvider
 from schemas.trace import RequestTrace
+from schemas.llm import LLMResponse
+from schemas.routing import RouteDecision
 from services.usage_tracker import UsageTracker
 from .schema import ChatRequest
 from config.prompts import Prompts
@@ -149,6 +151,36 @@ class ChatService:
             "estimated_cost": estimated_cost,
         } 
 
+    async def _generate_with_fallbacks(
+        self,
+        route: RouteDecision,
+        context: list[dict[str, str]],
+    ) -> tuple[LLMResponse, RouteDecision]:
+        first_error: str | None = None
+        try:
+            llm_response = await self.llm_provider.generate(model=route.model, messages=context)
+            return llm_response, route
+        except Exception as e:
+            first_error = str(e)
+            logger.warning("Primary model %s failed: %s", route.model, first_error)
+
+        for fallback_model in route.fallback_models:
+            try:
+                llm_response = await self.llm_provider.generate(model=fallback_model, messages=context)
+                route.fallback_used = True
+                route.fallback_model = fallback_model
+                route.fallback_error = first_error[:500] if first_error else None
+                logger.info("Fallback to %s succeeded", fallback_model)
+                return llm_response, route
+            except Exception:
+                logger.warning("Fallback model %s also failed", fallback_model)
+                continue
+
+        raise HTTPException(
+            status_code=502,
+            detail=f"All models failed. Last error: {(first_error or 'unknown')[:200]}",
+        )
+
     async def chat(
         self,
         payload: ChatRequest,
@@ -182,12 +214,14 @@ class ChatService:
         intent = await self.classifier.classify(prompt)
         route = self.model_selector.select(intent)
 
-        llm_response = await self.llm_provider.generate(model=route.model, messages=context)
+        llm_response, route = await self._generate_with_fallbacks(route, context)
         response = llm_response.content
+
+        actual_model = route.fallback_model if route.fallback_used else route.model
 
         trace = RequestTrace(
             provider=route.provider,
-            model=route.model,
+            model=actual_model,
             complexity=route.complexity,
             classifier_reason=route.classifier_reason,
             confidence=route.confidence,
@@ -202,7 +236,7 @@ class ChatService:
             response, conversation, conversation_id, session
         )
 
-        cost_info = self._estimate_cost(context, response, route.model, llm_response)
+        cost_info = self._estimate_cost(context, response, actual_model, llm_response)
         try:
             self.usage_logger.log_usage(
                 session=session,
@@ -234,6 +268,9 @@ class ChatService:
             "confidence": route.confidence,
             "provider": route.provider,
             "model": route.model,
+            "fallback_used": route.fallback_used,
+            "fallback_model": route.fallback_model,
+            "fallback_error": route.fallback_error,
             "response": response,
             "usage": {
                 "input_tokens": llm_response.input_tokens,
