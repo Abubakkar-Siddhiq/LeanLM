@@ -1,16 +1,18 @@
 from pathlib import Path
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
-    GROQ_API_KEY: str
-    HF_TOKEN: str
+    model_config = SettingsConfigDict(env_file=ROOT_DIR / ".env")
 
-    class Config:
-        env_file = ROOT_DIR / ".env"
+    DATABASE_URL: str
+    GROQ_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    HF_TOKEN: str = ""
 
 
 settings = Settings()
