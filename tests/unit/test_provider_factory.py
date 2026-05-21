@@ -35,3 +35,11 @@ class TestProviderFactoryAvailable:
     def test_unregistered_provider_not_returned(self):
         from providers import ProviderFactory
         assert "nonexistent" not in ProviderFactory._PROVIDER_KEY_MAP
+
+    @patch("config.settings.settings.GROQ_API_KEY", "sk-groq")
+    @patch("config.settings.settings.OPENAI_API_KEY", "sk-openai")
+    @patch("config.settings.settings.ALLOW_ENV_PROVIDER_FALLBACK", False)
+    def test_returns_empty_when_env_fallback_disabled(self):
+        from providers import ProviderFactory
+        available = ProviderFactory.available_providers()
+        assert available == []

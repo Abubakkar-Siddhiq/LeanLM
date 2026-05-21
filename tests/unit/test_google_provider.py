@@ -17,14 +17,6 @@ class TestGoogleProvider:
     async def test_generate_returns_llm_response(self):
         from providers.google import GoogleProvider
 
-        mock_response = MagicMock()
-        mock_response.text = "Hello from Gemini"
-        mock_usage = MagicMock()
-        mock_usage.prompt_token_count = 12
-        mock_usage.candidates_token_count = 22
-        mock_usage.total_token_count = 34
-        mock_response.usage_metadata = mock_usage
-
         provider = GoogleProvider()
         provider._sync_generate = MagicMock(return_value=MagicMock(
             content="Hello from Gemini",
@@ -65,3 +57,12 @@ class TestGoogleProvider:
         provider = GoogleProvider()
         with pytest.raises(ValueError, match="GEMINI_API_KEY not set"):
             await provider.generate(model="gemini-2.0-flash", messages=[])
+
+    @patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"})
+    async def test_generate_raises_when_env_fallback_disabled(self):
+        from providers.google import GoogleProvider
+
+        provider = GoogleProvider()
+        with patch("config.settings.settings.ALLOW_ENV_PROVIDER_FALLBACK", False):
+            with pytest.raises(ValueError, match="GEMINI_API_KEY not set"):
+                await provider.generate(model="gemini-2.0-flash", messages=[])

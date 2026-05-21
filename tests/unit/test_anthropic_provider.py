@@ -13,8 +13,9 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestAnthropicProvider:
+    @patch("anthropic.AsyncAnthropic")
     @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-test"})
-    async def test_generate_returns_llm_response(self):
+    async def test_generate_returns_llm_response(self, mock_async_anthropic):
         from providers.anthropic import AnthropicProvider
 
         mock_response = MagicMock()
@@ -26,9 +27,11 @@ class TestAnthropicProvider:
         mock_response.usage.output_tokens = 25
         mock_response.model_dump.return_value = {"id": "msg_123"}
 
+        mock_client = AsyncMock()
+        mock_async_anthropic.return_value = mock_client
+        mock_client.messages.create = AsyncMock(return_value=mock_response)
+
         provider = AnthropicProvider()
-        provider._client = AsyncMock()
-        provider._client.messages.create = AsyncMock(return_value=mock_response)
 
         result = await provider.generate(model="claude-sonnet-4-20250514", messages=[{"role": "user", "content": "Hi"}])
 
@@ -46,3 +49,39 @@ class TestAnthropicProvider:
         provider = AnthropicProvider()
         with pytest.raises(ValueError, match="ANTHROPIC_API_KEY not set"):
             await provider.generate(model="claude-sonnet-4-20250514", messages=[])
+
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-test"})
+    async def test_generate_raises_when_env_fallback_disabled(self):
+        from providers.anthropic import AnthropicProvider
+
+        provider = AnthropicProvider()
+        with patch("config.settings.settings.ALLOW_ENV_PROVIDER_FALLBACK", False):
+            with pytest.raises(ValueError, match="ANTHROPIC_API_KEY not set"):
+                await provider.generate(model="claude-sonnet-4-20250514", messages=[])
+
+    @patch("anthropic.AsyncAnthropic")
+    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-test"})
+    async def test_byok_key_overrides_env(self, mock_async_anthropic):
+        from providers.anthropic import AnthropicProvider
+
+        mock_response = MagicMock()
+        mock_block = MagicMock()
+        mock_block.type = "text"
+        mock_block.text = "BYOK reply"
+        mock_response.content = [mock_block]
+        mock_response.usage = MagicMock()
+        mock_response.model_dump.return_value = {}
+
+        mock_client = AsyncMock()
+        mock_async_anthropic.return_value = mock_client
+        mock_client.messages.create = AsyncMock(return_value=mock_response)
+
+        provider = AnthropicProvider()
+        result = await provider.generate(
+            model="claude-sonnet-4-20250514",
+            messages=[{"role": "user", "content": "Hi"}],
+            api_key="sk-byok-key"
+        )
+
+        assert result.content == "BYOK reply"
+        mock_async_anthropic.assert_called_once_with(api_key="sk-byok-key")

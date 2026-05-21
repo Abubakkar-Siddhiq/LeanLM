@@ -91,7 +91,7 @@ class TestIntentClassifierLLMResponse:
         """Verify that .content is extracted from LLMResponse before json.loads."""
 
         class MockProvider:
-            async def generate(self, model, messages):
+            async def generate(self, model, messages, api_key=None):
                 return LLMResponse(
                     content=json.dumps({
                         "task_type": "simple_qa",
@@ -118,7 +118,7 @@ class TestIntentClassifierLLMResponse:
         """Should fall back to medium on parse failure."""
 
         class BrokenProvider:
-            async def generate(self, model, messages):
+            async def generate(self, model, messages, api_key=None):
                 return LLMResponse(
                     content="not valid json at all",
                     provider="groq",

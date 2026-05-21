@@ -13,8 +13,9 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestOpenAIProvider:
+    @patch("openai.AsyncOpenAI")
     @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"})
-    async def test_generate_returns_llm_response(self):
+    async def test_generate_returns_llm_response(self, mock_async_openai):
         from providers.openai import OpenAIProvider
 
         mock_completion = MagicMock()
@@ -25,9 +26,11 @@ class TestOpenAIProvider:
         mock_completion.usage.total_tokens = 30
         mock_completion.model_dump.return_value = {"id": "chatcmpl-123"}
 
+        mock_client = AsyncMock()
+        mock_async_openai.return_value = mock_client
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_completion)
+
         provider = OpenAIProvider()
-        provider._client = AsyncMock()
-        provider._client.chat.completions.create = AsyncMock(return_value=mock_completion)
 
         result = await provider.generate(model="gpt-4o-mini", messages=[{"role": "user", "content": "Hi"}])
 
@@ -46,3 +49,37 @@ class TestOpenAIProvider:
         provider = OpenAIProvider()
         with pytest.raises(ValueError, match="OPENAI_API_KEY not set"):
             await provider.generate(model="gpt-4o-mini", messages=[])
+
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"})
+    async def test_generate_raises_when_env_fallback_disabled(self):
+        from providers.openai import OpenAIProvider
+
+        provider = OpenAIProvider()
+        with patch("config.settings.settings.ALLOW_ENV_PROVIDER_FALLBACK", False):
+            with pytest.raises(ValueError, match="OPENAI_API_KEY not set"):
+                await provider.generate(model="gpt-4o-mini", messages=[])
+
+    @patch("openai.AsyncOpenAI")
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"})
+    async def test_byok_key_overrides_env(self, mock_async_openai):
+        from providers.openai import OpenAIProvider
+
+        mock_completion = MagicMock()
+        mock_completion.choices = [MagicMock()]
+        mock_completion.choices[0].message.content = "BYOK reply"
+        mock_completion.usage = MagicMock()
+        mock_completion.model_dump.return_value = {}
+
+        mock_client = AsyncMock()
+        mock_async_openai.return_value = mock_client
+        mock_client.chat.completions.create = AsyncMock(return_value=mock_completion)
+
+        provider = OpenAIProvider()
+        result = await provider.generate(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": "Hi"}],
+            api_key="sk-byok-key"
+        )
+
+        assert result.content == "BYOK reply"
+        mock_async_openai.assert_called_once_with(api_key="sk-byok-key")
