@@ -12,9 +12,10 @@ def in_memory_db():
     engine = create_engine("sqlite:///:memory:", echo=False)
 
     from db.usage import LLMUsageLog
-    SQLModel.metadata.create_all(engine, tables=[LLMUsageLog.__table__])
+    from db.provider_keys import ProviderKey
+    SQLModel.metadata.create_all(engine, tables=[LLMUsageLog.__table__, ProviderKey.__table__])
     yield engine
-    SQLModel.metadata.drop_all(engine, tables=[LLMUsageLog.__table__])
+    SQLModel.metadata.drop_all(engine, tables=[LLMUsageLog.__table__, ProviderKey.__table__])
 
 
 @pytest.fixture
