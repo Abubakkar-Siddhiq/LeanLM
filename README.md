@@ -7,6 +7,10 @@
 
 <br />
 <div align="center">
+  <a href="https://github.com/Abubakkar-Siddhiq/routiq">
+    <img width="80" height="80" alt="logo" src="https://github.com/user-attachments/assets/6fa1afd6-a56b-4ba9-9f47-1c58d13a2bce" />
+  </a>
+  
   <h3 align="center">Routiq</h3>
 
   <p align="center">
