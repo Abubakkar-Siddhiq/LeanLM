@@ -1,6 +1,22 @@
 class ProviderFactory:
     _instances = {}
 
+    _PROVIDER_KEY_MAP = {
+        "groq": "GROQ_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "google": "GEMINI_API_KEY",
+    }
+
+    @classmethod
+    def available_providers(cls) -> list[str]:
+        from config.settings import settings
+        return [
+            name
+            for name, key_attr in cls._PROVIDER_KEY_MAP.items()
+            if getattr(settings, key_attr, "").strip()
+        ]
+
     @classmethod
     def get(cls, name: str):
         if name not in cls._instances:

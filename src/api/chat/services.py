@@ -221,7 +221,8 @@ class ChatService:
         )
 
         intent = await self.classifier.classify(prompt)
-        route = self.model_selector.select(intent)
+        available_providers = ProviderFactory.available_providers()
+        route = self.model_selector.select(intent, available_providers=available_providers)
 
         llm_response, route = await self._generate_with_fallbacks(route, context)
         response = llm_response.content
@@ -280,6 +281,7 @@ class ChatService:
             "fallback_used": route.fallback_used,
             "fallback_model": route.fallback_model,
             "fallback_error": route.fallback_error,
+            "available_providers": available_providers,
             "response": response,
             "usage": {
                 "input_tokens": llm_response.input_tokens,

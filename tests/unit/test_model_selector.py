@@ -233,3 +233,72 @@ class TestModelSelector:
         route = selector.select(intent)
         assert route.provider == "openai"
         assert route.model == "openai/gpt-oss-120b"
+
+    def test_select_without_available_providers_fallback_backward_compat(self, selector):
+        intent = ClassificationResult(
+            task_type="reasoning",
+            complexity="high",
+            confidence=0.98,
+            reason="Architecture decisions.",
+        )
+        route_none = selector.select(intent, available_providers=None)
+        route_empty = selector.select(intent, available_providers=[])
+        assert route_none.provider == "openai"
+        assert route_none.model == "openai/gpt-oss-120b"
+        assert route_empty.provider == "openai"
+
+    def test_unavailable_primary_provider_skipped(self, selector):
+        intent = ClassificationResult(
+            task_type="reasoning",
+            complexity="high",
+            confidence=0.98,
+            reason="Architecture decisions.",
+        )
+        route = selector.select(intent, available_providers=["groq"])
+
+        assert route.provider == "groq"
+        assert route.model != "openai/gpt-oss-120b"
+
+    def test_fallback_models_only_include_available_providers(self, selector):
+        intent = ClassificationResult(
+            task_type="coding",
+            complexity="medium",
+            confidence=0.85,
+            reason="Coding task.",
+        )
+        route = selector.select(intent, available_providers=["groq"])
+        from config.routing import MODEL_TO_PROVIDER
+        for m in route.fallback_models:
+            assert MODEL_TO_PROVIDER.get(m) == "groq"
+
+    def test_selected_route_provider_in_available_providers(self, selector):
+        intent = ClassificationResult(
+            task_type="simple_qa",
+            complexity="low",
+            confidence=0.95,
+            reason="Simple query.",
+        )
+        route = selector.select(intent, available_providers=["groq"])
+        assert route.provider in ["groq"]
+
+    def test_only_groq_available_uses_groq_models(self, selector):
+        intent = ClassificationResult(
+            task_type="reasoning",
+            complexity="high",
+            confidence=0.98,
+            reason="Architecture decisions.",
+        )
+        route = selector.select(intent, available_providers=["groq"])
+        assert route.provider == "groq"
+        assert route.model not in ("openai/gpt-oss-120b", "gpt-4o")
+
+    def test_openai_not_available_openai_model_not_selected(self, selector):
+        intent = ClassificationResult(
+            task_type="reasoning",
+            complexity="high",
+            confidence=0.98,
+            reason="Architecture decisions.",
+        )
+        route = selector.select(intent, available_providers=["groq"])
+        assert route.provider != "openai"
+        assert "openai" not in str(route.model)
