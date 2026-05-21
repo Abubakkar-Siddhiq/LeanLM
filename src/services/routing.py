@@ -3,7 +3,7 @@ from config.prompts import Prompts
 from providers.groq import GroqProvider
 from schemas.routing import RouteDecision
 from schemas.classification import ClassificationResult
-from config.routing import ROUTING_RULES, DEFAULT_MODEL_BY_COMPLEXITY
+from config.routing import ROUTING_RULES, DEFAULT_MODEL_BY_COMPLEXITY, FALLBACK_MODEL_BY_COMPLEXITY
 
 
 class IntentClassifier:
@@ -34,6 +34,7 @@ class IntentClassifier:
 class ModelSelector:
     def select(self, intent: ClassificationResult) -> RouteDecision:
         model, routing_reason = self._select_model(intent)
+        fallback_models = self._get_fallback_models(intent.complexity, model)
 
         return RouteDecision(
                 provider="groq",
@@ -43,7 +44,12 @@ class ModelSelector:
                 classifier_reason=intent.reason,
                 routing_reason=routing_reason,
                 confidence=intent.confidence,
+                fallback_models=fallback_models,
             )
+
+    def _get_fallback_models(self, complexity: str, primary_model: str) -> list[str]:
+        fallbacks = FALLBACK_MODEL_BY_COMPLEXITY.get(complexity, [])
+        return [m for m in fallbacks if m != primary_model]
 
     def _select_model(self, intent: ClassificationResult) -> tuple[str, str]:
         for rule in ROUTING_RULES:

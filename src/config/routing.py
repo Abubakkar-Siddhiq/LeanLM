@@ -24,3 +24,19 @@ DEFAULT_MODEL_BY_COMPLEXITY = {
     "medium": "qwen/qwen3-32b",
     "high": "openai/gpt-oss-120b",
 }
+
+FALLBACK_MODEL_BY_COMPLEXITY = {
+    "low": [
+        "llama-3.1-8b-instant",
+        "qwen/qwen3-32b",
+    ],
+    "medium": [
+        "qwen/qwen3-32b",
+        "openai/gpt-oss-120b",
+        "llama-3.1-8b-instant",
+    ],
+    "high": [
+        "openai/gpt-oss-120b",
+        "qwen/qwen3-32b",
+    ],
+}

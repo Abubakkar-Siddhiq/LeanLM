@@ -154,3 +154,64 @@ class TestModelSelector:
         route = selector.select(intent)
 
         assert route.model == "llama-3.1-8b-instant"
+
+    def test_fallback_models_included_for_low(self, selector):
+        intent = ClassificationResult(
+            task_type="simple_qa",
+            complexity="low",
+            confidence=0.95,
+            reason="Simple query.",
+        )
+        route = selector.select(intent)
+
+        assert route.fallback_models == ["qwen/qwen3-32b"]
+
+    def test_fallback_models_included_for_medium(self, selector):
+        intent = ClassificationResult(
+            task_type="coding",
+            complexity="medium",
+            confidence=0.85,
+            reason="Requires code generation.",
+        )
+        route = selector.select(intent)
+
+        assert route.fallback_models == [
+            "openai/gpt-oss-120b",
+            "llama-3.1-8b-instant",
+        ]
+
+    def test_fallback_models_included_for_high(self, selector):
+        intent = ClassificationResult(
+            task_type="reasoning",
+            complexity="high",
+            confidence=0.98,
+            reason="Complex reasoning.",
+        )
+        route = selector.select(intent)
+
+        assert route.fallback_models == ["qwen/qwen3-32b"]
+
+    def test_fallback_models_removes_primary_model(self, selector):
+        intent = ClassificationResult(
+            task_type="writing",
+            complexity="low",
+            confidence=0.85,
+            reason="Writing task.",
+        )
+        route = selector.select(intent)
+
+        assert route.model == "llama-3.1-8b-instant"
+        assert "llama-3.1-8b-instant" not in route.fallback_models
+
+    def test_fallback_defaults_on_route_decision(self, selector):
+        intent = ClassificationResult(
+            task_type="simple_qa",
+            complexity="low",
+            confidence=0.95,
+            reason="Simple query.",
+        )
+        route = selector.select(intent)
+
+        assert route.fallback_used is False
+        assert route.fallback_model is None
+        assert route.fallback_error is None
