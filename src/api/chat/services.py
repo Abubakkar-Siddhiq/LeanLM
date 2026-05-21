@@ -16,6 +16,7 @@ from memory.summarizer import Summarizer
 from services.embedder import Embedder
 from services.prompt_builder import ChatPromptBuilder
 from services.routing import IntentClassifier, ModelSelector
+from services.usage_logger import UsageLogger
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class ChatService:
         self.embedder = Embedder()
         self.prompt_builder = ChatPromptBuilder()
         self.usage_tracker = UsageTracker()
+        self.usage_logger = UsageLogger()
 
     def _validate_prompt(self, prompt: str | None) -> str:
         if prompt is None or prompt.strip() == "":
@@ -200,6 +202,23 @@ class ChatService:
             response, conversation, conversation_id, session
         )
 
+        cost_info = self._estimate_cost(context, response, route.model, llm_response)
+        try:
+            self.usage_logger.log_usage(
+                session=session,
+                conversation_id=conversation_id,
+                user_message_id=user_message.id,
+                assistant_message_id=assistant_message.id,
+                route=route,
+                input_tokens=llm_response.input_tokens,
+                output_tokens=llm_response.output_tokens,
+                total_tokens=llm_response.total_tokens,
+                estimated_cost=cost_info["estimated_cost"],
+                latency_ms=llm_response.latency_ms,
+            )
+        except Exception:
+            logger.exception("Usage logging failed, chat response still succeeds")
+
         self._schedule_summarization_if_needed(
             conversation, messages, context, conversation_id, background_tasks
         )
@@ -216,14 +235,15 @@ class ChatService:
             "provider": route.provider,
             "model": route.model,
             "response": response,
-            "token_useage": { 
+            "usage": {
                 "input_tokens": llm_response.input_tokens,
                 "output_tokens": llm_response.output_tokens,
                 "total_tokens": llm_response.total_tokens,
+                "estimated_cost": cost_info["estimated_cost"],
                 "latency_ms": llm_response.latency_ms,
             },
             "trace": trace.model_dump(),
-            "cost_info": self._estimate_cost(context, response, route.model, llm_response),
+            "cost_info": cost_info,
         }
 
     def retrieve_relevant_messages(
