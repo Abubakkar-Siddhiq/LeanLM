@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     PROVIDER_KEY_ENCRYPTION_SECRET: str = ""
     HF_TOKEN: str = ""
+    ALLOW_ENV_PROVIDER_FALLBACK: bool = True
 
 
 settings = Settings()
