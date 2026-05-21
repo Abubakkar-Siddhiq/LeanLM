@@ -10,9 +10,9 @@ class ProviderFactory:
 
     @classmethod
     def available_providers(cls) -> list[str]:
-        # TODO: Replace env-based availability with
-        # ProviderKeyService.get_available_providers() when auth/user context is ready
         from config.settings import settings
+        if not settings.ALLOW_ENV_PROVIDER_FALLBACK:
+            return []
         return [
             name
             for name, key_attr in cls._PROVIDER_KEY_MAP.items()
