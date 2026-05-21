@@ -6,7 +6,9 @@ from sqlmodel import Session, select
 
 from db.models import Conversation, Message
 from db.session import SessionLocal
-from providers.groq import GroqProvider
+from providers import ProviderFactory
+from config.models import CLASSIFIER_MODEL
+from config.routing import MODEL_TO_PROVIDER
 from schemas.trace import RequestTrace
 from schemas.llm import LLMResponse
 from schemas.routing import RouteDecision
@@ -25,10 +27,10 @@ logger = logging.getLogger(__name__)
 
 class ChatService:
     def __init__(self):
-        self.llm_provider = GroqProvider()
+        self.llm_provider = ProviderFactory.get("groq")
         self.context_builder = ContextBuilder()
         self.summarizer = Summarizer()
-        self.local_model = "llama-3.1-8b-instant"
+        self.local_model = CLASSIFIER_MODEL
         self.classifier = IntentClassifier(self.llm_provider, self.local_model)
         self.model_selector = ModelSelector()
         self.embedder = Embedder()
@@ -157,23 +159,30 @@ class ChatService:
         context: list[dict[str, str]],
     ) -> tuple[LLMResponse, RouteDecision]:
         first_error: str | None = None
-        try:
-            llm_response = await self.llm_provider.generate(model=route.model, messages=context)
-            return llm_response, route
-        except Exception as e:
-            first_error = str(e)
-            logger.warning("Primary model %s failed: %s", route.model, first_error)
+        models_to_try = [route.model] + route.fallback_models
 
-        for fallback_model in route.fallback_models:
+        for model in models_to_try:
             try:
-                llm_response = await self.llm_provider.generate(model=fallback_model, messages=context)
-                route.fallback_used = True
-                route.fallback_model = fallback_model
-                route.fallback_error = first_error[:500] if first_error else None
-                logger.info("Fallback to %s succeeded", fallback_model)
+                provider_name = MODEL_TO_PROVIDER.get(model, "groq")
+                provider = ProviderFactory.get(provider_name)
+                if not provider:
+                    logger.warning("No provider registered for %s, skipping model %s", provider_name, model)
+                    continue
+                llm_response = await provider.generate(model=model, messages=context)
+
+                if model != route.model:
+                    route.fallback_used = True
+                    route.fallback_model = model
+                    route.fallback_error = first_error[:500] if first_error else None
+                    logger.info("Fallback to %s succeeded", model)
+
                 return llm_response, route
-            except Exception:
-                logger.warning("Fallback model %s also failed", fallback_model)
+            except Exception as e:
+                if model == route.model:
+                    first_error = str(e)
+                    logger.warning("Primary model %s failed: %s", route.model, first_error)
+                else:
+                    logger.warning("Fallback model %s failed: %s", model, e)
                 continue
 
         raise HTTPException(

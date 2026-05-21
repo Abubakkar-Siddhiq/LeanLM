@@ -3,7 +3,12 @@ from config.prompts import Prompts
 from providers.groq import GroqProvider
 from schemas.routing import RouteDecision
 from schemas.classification import ClassificationResult
-from config.routing import ROUTING_RULES, DEFAULT_MODEL_BY_COMPLEXITY, FALLBACK_MODEL_BY_COMPLEXITY
+from config.routing import (
+    ROUTING_RULES,
+    DEFAULT_MODEL_BY_COMPLEXITY,
+    FALLBACK_MODEL_BY_COMPLEXITY,
+    MODEL_TO_PROVIDER,
+)
 
 
 class IntentClassifier:
@@ -33,11 +38,11 @@ class IntentClassifier:
 
 class ModelSelector:
     def select(self, intent: ClassificationResult) -> RouteDecision:
-        model, routing_reason = self._select_model(intent)
-        fallback_models = self._get_fallback_models(intent.complexity, model)
+        provider, model, routing_reason = self._select_model(intent)
+        fallback_models = self._get_fallback_models(intent.complexity, model, provider)
 
         return RouteDecision(
-                provider="groq",
+                provider=provider,
                 model=model,
                 task_type=intent.task_type,
                 complexity=intent.complexity,
@@ -47,20 +52,23 @@ class ModelSelector:
                 fallback_models=fallback_models,
             )
 
-    def _get_fallback_models(self, complexity: str, primary_model: str) -> list[str]:
+    def _get_fallback_models(self, complexity: str, primary_model: str, primary_provider: str) -> list[str]:
         fallbacks = FALLBACK_MODEL_BY_COMPLEXITY.get(complexity, [])
-        return [m for m in fallbacks if m != primary_model]
+        return [
+            m for m in fallbacks
+            if m != primary_model
+            and MODEL_TO_PROVIDER.get(m) == primary_provider
+        ]
 
-    def _select_model(self, intent: ClassificationResult) -> tuple[str, str]:
+    def _select_model(self, intent: ClassificationResult) -> tuple[str, str, str]:
         for rule in ROUTING_RULES:
             if (
                 intent.task_type in rule["task_types"]
                 and intent.complexity in rule["complexities"]
             ):
-                return rule["model"], rule["reason"]
+                return rule["provider"], rule["model"], rule["reason"]
 
-        return (
-            DEFAULT_MODEL_BY_COMPLEXITY.get(intent.complexity, DEFAULT_MODEL_BY_COMPLEXITY["medium"]),
-            "Fallback model selected by complexity."
-        )
+        model = DEFAULT_MODEL_BY_COMPLEXITY.get(intent.complexity, DEFAULT_MODEL_BY_COMPLEXITY["medium"])
+        provider = MODEL_TO_PROVIDER.get(model, "groq")
+        return provider, model, "Fallback model selected by complexity."
 
