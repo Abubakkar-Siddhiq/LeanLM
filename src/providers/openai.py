@@ -1,24 +1,21 @@
 import os
 import time
-from dotenv import load_dotenv
 from schemas.llm import LLMResponse
 
-load_dotenv()
 
-
-class GroqProvider:
+class OpenAIProvider:
     def __init__(self):
-        api_key = os.getenv("GROQ_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
         self._client = None
         if api_key:
-            from groq import Groq
-            self._client = Groq(api_key=api_key)
+            from openai import AsyncOpenAI
+            self._client = AsyncOpenAI(api_key=api_key)
 
     async def generate(self, model: str, messages: list) -> LLMResponse:
         if not self._client:
-            raise ValueError("GROQ_API_KEY not set")
+            raise ValueError("OPENAI_API_KEY not set")
         start = time.monotonic()
-        completion = self._client.chat.completions.create(
+        completion = await self._client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=0.7,
@@ -27,7 +24,6 @@ class GroqProvider:
 
         content = completion.choices[0].message.content
         usage = completion.usage
-
         raw = None
         try:
             raw = completion.model_dump()
@@ -36,7 +32,7 @@ class GroqProvider:
 
         return LLMResponse(
             content=content,
-            provider="groq",
+            provider="openai",
             model=model,
             input_tokens=usage.prompt_tokens if usage else None,
             output_tokens=usage.completion_tokens if usage else None,
