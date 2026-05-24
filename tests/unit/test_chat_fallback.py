@@ -15,6 +15,8 @@ from schemas.llm import LLMResponse
 from schemas.classification import ClassificationResult
 from api.chat.services import ChatService
 
+DUMMY_UID = MagicMock()
+
 
 pytestmark = pytest.mark.asyncio
 
@@ -57,7 +59,7 @@ class TestChatServiceFallback:
         llm_response = LLMResponse(content="OK", provider="groq", model="qwen/qwen3-32b")
         mock_provider.generate.return_value = llm_response
 
-        result_response, result_route, prov_src = await service._generate_with_fallbacks(route, context, session=MagicMock())
+        result_response, result_route, prov_src = await service._generate_with_fallbacks(route, context, session=MagicMock(), user_id=DUMMY_UID)
 
         assert result_response.content == "OK"
         assert result_route.fallback_used is False
@@ -76,7 +78,7 @@ class TestChatServiceFallback:
             LLMResponse(content="Fallback OK", provider="groq", model="openai/gpt-oss-120b"),
         ])
 
-        result_response, result_route, prov_src = await service._generate_with_fallbacks(route, context, session=MagicMock())
+        result_response, result_route, prov_src = await service._generate_with_fallbacks(route, context, session=MagicMock(), user_id=DUMMY_UID)
 
         assert result_response.content == "Fallback OK"
         assert result_route.fallback_used is True
@@ -93,7 +95,7 @@ class TestChatServiceFallback:
             LLMResponse(content="Fallback OK", provider="groq", model="openai/gpt-oss-120b"),
         ])
 
-        result_response, result_route, prov_src = await service._generate_with_fallbacks(route, context, session=MagicMock())
+        result_response, result_route, prov_src = await service._generate_with_fallbacks(route, context, session=MagicMock(), user_id=DUMMY_UID)
 
         assert result_response.content == "Fallback OK"
         assert result_route.fallback_model == "openai/gpt-oss-120b"
@@ -106,7 +108,7 @@ class TestChatServiceFallback:
         mock_provider.generate = AsyncMock(side_effect=RuntimeError("All models down"))
 
         with pytest.raises(HTTPException) as exc_info:
-            await service._generate_with_fallbacks(route, context, session=MagicMock())
+            await service._generate_with_fallbacks(route, context, session=MagicMock(), user_id=DUMMY_UID)
 
         assert exc_info.value.status_code == 502
         assert "All models failed" in exc_info.value.detail
@@ -128,7 +130,7 @@ class TestChatServiceFallback:
         mock_provider.generate = AsyncMock(side_effect=RuntimeError("Down"))
 
         with pytest.raises(HTTPException) as exc_info:
-            await service._generate_with_fallbacks(route_no_fallback, context, session=MagicMock())
+            await service._generate_with_fallbacks(route_no_fallback, context, session=MagicMock(), user_id=DUMMY_UID)
 
         assert exc_info.value.status_code == 502
 
@@ -138,7 +140,7 @@ class TestChatServiceFallback:
         llm_response = LLMResponse(content="BYOK OK", provider="groq", model="qwen/qwen3-32b")
         mock_provider.generate.return_value = llm_response
 
-        result_response, result_route, prov_src = await service._generate_with_fallbacks(route, context, session=MagicMock())
+        result_response, result_route, prov_src = await service._generate_with_fallbacks(route, context, session=MagicMock(), user_id=DUMMY_UID)
 
         assert result_response.content == "BYOK OK"
         assert prov_src == "byok"
@@ -152,7 +154,7 @@ class TestChatServiceFallback:
         llm_response = LLMResponse(content="Env OK", provider="groq", model="qwen/qwen3-32b")
         mock_provider.generate.return_value = llm_response
 
-        result_response, result_route, prov_src = await service._generate_with_fallbacks(route, context, session=MagicMock())
+        result_response, result_route, prov_src = await service._generate_with_fallbacks(route, context, session=MagicMock(), user_id=DUMMY_UID)
 
         assert result_response.content == "Env OK"
         assert prov_src == "env"
@@ -182,6 +184,7 @@ class TestChatServiceFallback:
                     payload=ChatRequest(prompt="Hello"),
                     session=MagicMock(),
                     background_tasks=MagicMock(),
+                    user_id=DUMMY_UID,
                 )
 
         assert exc_info.value.status_code == 400
@@ -212,6 +215,7 @@ class TestChatServiceFallback:
             payload=ChatRequest(prompt="Hello"),
             session=MagicMock(),
             background_tasks=MagicMock(),
+            user_id=DUMMY_UID,
         )
 
         assert result["provider_source"] == "byok"

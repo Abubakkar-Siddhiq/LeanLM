@@ -1,6 +1,6 @@
 """Unit tests for LLMUsageLog model and UsageLogger — no live LLM calls, no API keys."""
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 from datetime import datetime, timezone
 
 import pytest
@@ -31,8 +31,9 @@ def make_route():
 
 
 class TestLLMUsageLogModel:
-    def test_create_log_minimal(self, db_session: Session):
+    def test_create_log_minimal(self, db_session: Session, test_user_id: UUID):
         log = LLMUsageLog(
+            user_id=test_user_id,
             conversation_id=uuid4(),
             user_message_id=uuid4(),
             assistant_message_id=uuid4(),
@@ -63,9 +64,10 @@ class TestLLMUsageLogModel:
         assert log.latency_ms is None
         assert isinstance(log.created_at, datetime)
 
-    def test_create_log_with_all_fields(self, db_session: Session):
+    def test_create_log_with_all_fields(self, db_session: Session, test_user_id: UUID):
         cid = uuid4()
         log = LLMUsageLog(
+            user_id=test_user_id,
             conversation_id=cid,
             user_message_id=uuid4(),
             assistant_message_id=uuid4(),
@@ -93,9 +95,10 @@ class TestLLMUsageLogModel:
         assert log.estimated_cost == 0.0125
         assert log.latency_ms == 1234.5
 
-    def test_log_persisted_can_be_queried(self, db_session: Session):
+    def test_log_persisted_can_be_queried(self, db_session: Session, test_user_id: UUID):
         cid = uuid4()
         log = LLMUsageLog(
+            user_id=test_user_id,
             conversation_id=cid,
             user_message_id=uuid4(),
             assistant_message_id=uuid4(),
@@ -118,13 +121,14 @@ class TestLLMUsageLogModel:
 
 
 class TestUsageLogger:
-    def test_log_usage_creates_record(self, db_session: Session):
+    def test_log_usage_creates_record(self, db_session: Session, test_user_id: UUID):
         route = make_route()
         logger = UsageLogger()
 
         cid = uuid4()
         result = logger.log_usage(
             session=db_session,
+            user_id=test_user_id,
             conversation_id=cid,
             user_message_id=uuid4(),
             assistant_message_id=uuid4(),
@@ -152,12 +156,13 @@ class TestUsageLogger:
         assert result.estimated_cost == 0.005
         assert result.latency_ms == 500.0
 
-    def test_log_usage_with_none_tokens(self, db_session: Session):
+    def test_log_usage_with_none_tokens(self, db_session: Session, test_user_id: UUID):
         route = make_route()
         logger = UsageLogger()
 
         result = logger.log_usage(
             session=db_session,
+            user_id=test_user_id,
             conversation_id=uuid4(),
             user_message_id=uuid4(),
             assistant_message_id=uuid4(),
@@ -174,7 +179,7 @@ class TestUsageLogger:
         assert result.total_tokens is None
         assert result.latency_ms is None
 
-    def test_log_usage_multiple_records(self, db_session: Session):
+    def test_log_usage_multiple_records(self, db_session: Session, test_user_id: UUID):
         route = make_route()
         logger = UsageLogger()
 
@@ -182,6 +187,7 @@ class TestUsageLogger:
         for _ in range(3):
             logger.log_usage(
                 session=db_session,
+                user_id=test_user_id,
                 conversation_id=cid,
                 user_message_id=uuid4(),
                 assistant_message_id=uuid4(),

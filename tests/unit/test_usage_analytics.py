@@ -1,6 +1,6 @@
 """Unit tests for UsageAnalytics service — no live LLM calls, no API keys."""
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 from datetime import datetime, timezone
 
 import pytest
@@ -10,9 +10,10 @@ from db.usage import LLMUsageLog
 from api.usage.services import UsageAnalytics
 
 
-def _seed_logs(session: Session, count: int = 5):
+def _seed_logs(session: Session, user_id: UUID, count: int = 5):
     for i in range(count):
         log = LLMUsageLog(
+            user_id=user_id,
             conversation_id=uuid4(),
             user_message_id=uuid4(),
             assistant_message_id=uuid4(),
@@ -34,9 +35,9 @@ def _seed_logs(session: Session, count: int = 5):
 
 
 class TestUsageAnalytics:
-    def test_summary_empty(self, db_session: Session):
+    def test_summary_empty(self, db_session: Session, test_user_id: UUID):
         service = UsageAnalytics()
-        result = service.get_summary(db_session)
+        result = service.get_summary(db_session, test_user_id)
 
         assert result.total_requests == 0
         assert result.total_input_tokens == 0
@@ -45,10 +46,10 @@ class TestUsageAnalytics:
         assert result.total_estimated_cost == 0.0
         assert result.average_latency_ms is None
 
-    def test_summary_aggregates_correctly(self, db_session: Session):
-        _seed_logs(db_session, count=3)
+    def test_summary_aggregates_correctly(self, db_session: Session, test_user_id: UUID):
+        _seed_logs(db_session, test_user_id, count=3)
         service = UsageAnalytics()
-        result = service.get_summary(db_session)
+        result = service.get_summary(db_session, test_user_id)
 
         assert result.total_requests == 3
         assert result.total_input_tokens == 330  # 100 + 110 + 120
@@ -57,10 +58,10 @@ class TestUsageAnalytics:
         assert result.total_estimated_cost == 0.006  # 0.001 + 0.002 + 0.003
         assert result.average_latency_ms is not None
 
-    def test_by_model_groups_correctly(self, db_session: Session):
-        _seed_logs(db_session, count=5)
+    def test_by_model_groups_correctly(self, db_session: Session, test_user_id: UUID):
+        _seed_logs(db_session, test_user_id, count=5)
         service = UsageAnalytics()
-        results = service.get_usage_by_model(db_session)
+        results = service.get_usage_by_model(db_session, test_user_id)
 
         models = {r.model: r for r in results}
         assert len(results) == 2
@@ -71,10 +72,10 @@ class TestUsageAnalytics:
         assert models["qwen/qwen3-32b"].request_count == 2
         assert models["llama-3.1-8b-instant"].provider == "groq"
 
-    def test_by_task_type_groups_correctly(self, db_session: Session):
-        _seed_logs(db_session, count=5)
+    def test_by_task_type_groups_correctly(self, db_session: Session, test_user_id: UUID):
+        _seed_logs(db_session, test_user_id, count=5)
         service = UsageAnalytics()
-        results = service.get_usage_by_task_type(db_session)
+        results = service.get_usage_by_task_type(db_session, test_user_id)
 
         types = {r.task_type: r for r in results}
         assert len(results) == 2
@@ -83,27 +84,27 @@ class TestUsageAnalytics:
         assert types["simple_qa"].request_count == 3
         assert types["coding"].request_count == 2
 
-    def test_recent_usage_ordered_by_created_at(self, db_session: Session):
-        _seed_logs(db_session, count=5)
+    def test_recent_usage_ordered_by_created_at(self, db_session: Session, test_user_id: UUID):
+        _seed_logs(db_session, test_user_id, count=5)
         service = UsageAnalytics()
-        results = service.get_recent_usage(db_session, limit=10)
+        results = service.get_recent_usage(db_session, test_user_id, limit=10)
 
         assert len(results) == 5
         # Most recent first
         for i in range(len(results) - 1):
             assert results[i].created_at >= results[i + 1].created_at
 
-    def test_recent_usage_respects_limit(self, db_session: Session):
-        _seed_logs(db_session, count=10)
+    def test_recent_usage_respects_limit(self, db_session: Session, test_user_id: UUID):
+        _seed_logs(db_session, test_user_id, count=10)
         service = UsageAnalytics()
-        results = service.get_recent_usage(db_session, limit=3)
+        results = service.get_recent_usage(db_session, test_user_id, limit=3)
 
         assert len(results) == 3
 
-    def test_recent_usage_returns_min_fields(self, db_session: Session):
-        _seed_logs(db_session, count=1)
+    def test_recent_usage_returns_min_fields(self, db_session: Session, test_user_id: UUID):
+        _seed_logs(db_session, test_user_id, count=1)
         service = UsageAnalytics()
-        results = service.get_recent_usage(db_session, limit=10)
+        results = service.get_recent_usage(db_session, test_user_id, limit=10)
 
         item = results[0]
         assert item.id is not None
