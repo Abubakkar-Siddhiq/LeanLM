@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from db.session import get_session
+from api.auth.dependencies import get_current_user
+from db.models import User
 from api.providers.schemas import (
     ProviderKeyCreate,
     ProviderKeyResponse,
@@ -24,9 +26,10 @@ provider_key_service = ProviderKeyService()
 def create_provider_key(
     payload: ProviderKeyCreate,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        return provider_key_service.create_provider_key(session, payload)
+        return provider_key_service.create_provider_key(session, payload, current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -38,8 +41,9 @@ def create_provider_key(
 )
 def list_provider_keys(
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
-    return provider_key_service.list_provider_keys(session)
+    return provider_key_service.list_provider_keys(session, current_user.id)
 
 
 @router.delete(
@@ -50,8 +54,9 @@ def list_provider_keys(
 def delete_provider_key(
     provider_name: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
-    result = provider_key_service.delete_provider_key(session, provider_name)
+    result = provider_key_service.delete_provider_key(session, provider_name, current_user.id)
     if result is None:
         raise HTTPException(
             status_code=404,
@@ -68,8 +73,9 @@ def delete_provider_key(
 def validate_provider_key(
     provider_name: str,
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
-    return provider_key_service.validate_provider_key(session, provider_name)
+    return provider_key_service.validate_provider_key(session, provider_name, current_user.id)
 
 
 @router.get(
@@ -79,6 +85,7 @@ def validate_provider_key(
 )
 def get_available_providers(
     session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
 ):
-    available = provider_key_service.get_available_providers(session)
+    available = provider_key_service.get_available_providers(session, current_user.id)
     return ProviderAvailabilityResponse(available_providers=available)

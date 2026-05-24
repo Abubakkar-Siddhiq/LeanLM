@@ -6,6 +6,8 @@ from api.chat.views import router as chat_router
 from api.conversation.views import router as conversation_router
 from api.usage.views import router as usage_router
 from api.providers.routes import router as providers_router
+from api.auth.dependencies import get_current_user
+from db.models import User
 from db.session import init_db
 
 @asynccontextmanager

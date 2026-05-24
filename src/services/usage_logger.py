@@ -11,6 +11,7 @@ class UsageLogger:
     def log_usage(
         self,
         session: Session,
+        user_id: UUID,
         conversation_id: UUID,
         user_message_id: UUID,
         assistant_message_id: UUID,
@@ -24,6 +25,7 @@ class UsageLogger:
         # TODO: persist fallback fields (fallback_used, fallback_model, fallback_error)
         # when LLMUsageLog table is updated with those columns
         log = LLMUsageLog(
+            user_id=user_id,
             conversation_id=conversation_id,
             user_message_id=user_message_id,
             assistant_message_id=assistant_message_id,

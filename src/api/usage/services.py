@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlmodel import Session, select, func
 from db.usage import LLMUsageLog
 from api.usage.schemas import (
@@ -9,7 +11,7 @@ from api.usage.schemas import (
 
 
 class UsageAnalytics:
-    def get_summary(self, session: Session) -> UsageSummaryResponse:
+    def get_summary(self, session: Session, user_id: UUID) -> UsageSummaryResponse:
         row = session.exec(
             select(
                 func.count(LLMUsageLog.id).label("total_requests"),
@@ -19,6 +21,7 @@ class UsageAnalytics:
                 func.coalesce(func.sum(LLMUsageLog.estimated_cost), 0.0).label("total_estimated_cost"),
                 func.avg(LLMUsageLog.latency_ms).label("average_latency_ms"),
             )
+            .where(LLMUsageLog.user_id == user_id)
         ).one()
 
         return UsageSummaryResponse(
@@ -34,7 +37,7 @@ class UsageAnalytics:
             ),
         )
 
-    def get_usage_by_model(self, session: Session) -> list[UsageByModelItem]:
+    def get_usage_by_model(self, session: Session, user_id: UUID) -> list[UsageByModelItem]:
         rows = session.exec(
             select(
                 LLMUsageLog.provider,
@@ -44,6 +47,7 @@ class UsageAnalytics:
                 func.coalesce(func.sum(LLMUsageLog.estimated_cost), 0.0).label("total_estimated_cost"),
                 func.avg(LLMUsageLog.latency_ms).label("average_latency_ms"),
             )
+            .where(LLMUsageLog.user_id == user_id)
             .group_by(LLMUsageLog.provider, LLMUsageLog.model)
             .order_by(func.count(LLMUsageLog.id).desc())
         ).all()
@@ -64,7 +68,7 @@ class UsageAnalytics:
             for row in rows
         ]
 
-    def get_usage_by_task_type(self, session: Session) -> list[UsageByTaskTypeItem]:
+    def get_usage_by_task_type(self, session: Session, user_id: UUID) -> list[UsageByTaskTypeItem]:
         rows = session.exec(
             select(
                 LLMUsageLog.task_type,
@@ -73,6 +77,7 @@ class UsageAnalytics:
                 func.coalesce(func.sum(LLMUsageLog.estimated_cost), 0.0).label("total_estimated_cost"),
                 func.avg(LLMUsageLog.latency_ms).label("average_latency_ms"),
             )
+            .where(LLMUsageLog.user_id == user_id)
             .group_by(LLMUsageLog.task_type)
             .order_by(func.count(LLMUsageLog.id).desc())
         ).all()
@@ -93,10 +98,11 @@ class UsageAnalytics:
         ]
 
     def get_recent_usage(
-        self, session: Session, limit: int = 20
+        self, session: Session, user_id: UUID, limit: int = 20
     ) -> list[RecentUsageItem]:
         rows = session.exec(
             select(LLMUsageLog)
+            .where(LLMUsageLog.user_id == user_id)
             .order_by(LLMUsageLog.created_at.desc())
             .limit(limit)
         ).all()

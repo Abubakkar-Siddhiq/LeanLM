@@ -46,17 +46,17 @@ class ChatService:
         return prompt.strip()
 
     def _get_or_create_conversation(
-        self, payload: ChatRequest, session: Session
+        self, payload: ChatRequest, session: Session, user_id: UUID
     ) -> tuple[Conversation, UUID]:
         if not payload.conversation_id:
-            conversation = Conversation()
+            conversation = Conversation(user_id=user_id)
             session.add(conversation)
             session.commit()
             session.refresh(conversation)
             return conversation, conversation.id
 
         conversation = session.get(Conversation, payload.conversation_id)
-        if not conversation:
+        if not conversation or conversation.user_id != user_id:
             raise HTTPException(status_code=404, detail="Conversation not found")
         return conversation, payload.conversation_id
 
@@ -160,6 +160,7 @@ class ChatService:
         route: RouteDecision,
         context: list[dict[str, str]],
         session: Session,
+        user_id: UUID,
     ) -> tuple[LLMResponse, RouteDecision, str]:
         first_error: str | None = None
         models_to_try = [route.model] + route.fallback_models
@@ -173,7 +174,7 @@ class ChatService:
                     logger.warning("No provider registered for %s, skipping model %s", provider_name, model)
                     continue
 
-                api_key = self.provider_key_service.get_decrypted_api_key(session, provider_name)
+                api_key = self.provider_key_service.get_decrypted_api_key(session, provider_name, user_id)
                 if api_key:
                     provider_source = "byok"
                 else:
@@ -206,11 +207,12 @@ class ChatService:
         payload: ChatRequest,
         session: Session,
         background_tasks: BackgroundTasks,
+        user_id: UUID,
     ):
         prompt = self._validate_prompt(payload.prompt)
 
         conversation, conversation_id = self._get_or_create_conversation(
-            payload, session
+            payload, session, user_id
         )
 
         user_message = self._save_user_message(prompt, conversation_id, session)
@@ -231,10 +233,10 @@ class ChatService:
             relevant_messages=relevant_messages,
         )
 
-        groq_key = self.provider_key_service.get_decrypted_api_key(session, "groq")
+        groq_key = self.provider_key_service.get_decrypted_api_key(session, "groq", user_id)
         intent = await self.classifier.classify(prompt, api_key=groq_key)
 
-        byok_providers = self.provider_key_service.get_available_providers(session)
+        byok_providers = self.provider_key_service.get_available_providers(session, user_id)
         if byok_providers:
             available_providers = byok_providers
         else:
@@ -251,7 +253,7 @@ class ChatService:
 
         route = self.model_selector.select(intent, available_providers=available_providers)
 
-        llm_response, route, provider_source = await self._generate_with_fallbacks(route, context, session)
+        llm_response, route, provider_source = await self._generate_with_fallbacks(route, context, session, user_id)
         response = llm_response.content
 
         actual_model = route.fallback_model if route.fallback_used else route.model
@@ -277,6 +279,7 @@ class ChatService:
         try:
             self.usage_logger.log_usage(
                 session=session,
+                user_id=user_id,
                 conversation_id=conversation_id,
                 user_message_id=user_message.id,
                 assistant_message_id=assistant_message.id,

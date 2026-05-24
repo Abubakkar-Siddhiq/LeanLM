@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlmodel import Session, select
 
 from db.provider_keys import ProviderKey
@@ -21,9 +23,9 @@ class ProviderKeyService:
         )
 
     def create_provider_key(
-        self, session: Session, payload: ProviderKeyCreate
+        self, session: Session, payload: ProviderKeyCreate, user_id: UUID
     ) -> ProviderKeyResponse:
-        provider_name = payload.provider_name  # already normalized by schema
+        provider_name = payload.provider_name
 
         if not payload.api_key:
             raise ValueError("API key cannot be empty")
@@ -31,7 +33,10 @@ class ProviderKeyService:
         encrypted = encrypt_api_key(payload.api_key)
 
         existing = session.exec(
-            select(ProviderKey).where(ProviderKey.provider_name == provider_name)
+            select(ProviderKey).where(
+                ProviderKey.user_id == user_id,
+                ProviderKey.provider_name == provider_name,
+            )
         ).first()
 
         if existing:
@@ -43,6 +48,7 @@ class ProviderKeyService:
             return self._to_response(existing)
 
         key = ProviderKey(
+            user_id=user_id,
             provider_name=provider_name,
             encrypted_api_key=encrypted,
             is_active=True,
@@ -52,16 +58,21 @@ class ProviderKeyService:
         session.refresh(key)
         return self._to_response(key)
 
-    def list_provider_keys(self, session: Session) -> list[ProviderKeyResponse]:
-        keys = session.exec(select(ProviderKey)).all()
+    def list_provider_keys(self, session: Session, user_id: UUID) -> list[ProviderKeyResponse]:
+        keys = session.exec(
+            select(ProviderKey).where(ProviderKey.user_id == user_id)
+        ).all()
         return [self._to_response(k) for k in keys]
 
     def delete_provider_key(
-        self, session: Session, provider_name: str
+        self, session: Session, provider_name: str, user_id: UUID
     ) -> ProviderKeyResponse | None:
         provider_name = provider_name.strip().lower()
         key = session.exec(
-            select(ProviderKey).where(ProviderKey.provider_name == provider_name)
+            select(ProviderKey).where(
+                ProviderKey.user_id == user_id,
+                ProviderKey.provider_name == provider_name,
+            )
         ).first()
         if key is None:
             return None
@@ -72,7 +83,7 @@ class ProviderKeyService:
         return self._to_response(key)
 
     def validate_provider_key(
-        self, session: Session, provider_name: str
+        self, session: Session, provider_name: str, user_id: UUID
     ) -> ProviderKeyValidateResponse:
         provider_name = provider_name.strip().lower()
 
@@ -85,6 +96,7 @@ class ProviderKeyService:
 
         key = session.exec(
             select(ProviderKey).where(
+                ProviderKey.user_id == user_id,
                 ProviderKey.provider_name == provider_name,
                 ProviderKey.is_active == True,
             )
@@ -97,24 +109,27 @@ class ProviderKeyService:
                 message="No active provider key found",
             )
 
-        # TODO: Add real provider API validation later
         return ProviderKeyValidateResponse(
             provider_name=provider_name,
             valid=True,
             message="Provider key is stored and active",
         )
 
-    def get_available_providers(self, session: Session) -> list[str]:
+    def get_available_providers(self, session: Session, user_id: UUID) -> list[str]:
         keys = session.exec(
-            select(ProviderKey).where(ProviderKey.is_active == True)
+            select(ProviderKey).where(
+                ProviderKey.user_id == user_id,
+                ProviderKey.is_active == True,
+            )
         ).all()
         return [k.provider_name for k in keys]
 
     def get_decrypted_api_key(
-        self, session: Session, provider_name: str
+        self, session: Session, provider_name: str, user_id: UUID
     ) -> str | None:
         key = session.exec(
             select(ProviderKey).where(
+                ProviderKey.user_id == user_id,
                 ProviderKey.provider_name == provider_name,
                 ProviderKey.is_active == True,
             )
