@@ -15,9 +15,11 @@ LeanLM supports **four providers** (Groq, OpenAI, Anthropic, Google) through a c
 ```
 User prompt (POST /api/chat)
 │
+├─ 0. get_current_user()         → JWT verification + User lookup/creation
+│
 ├─ 1. ChatService.chat()
 │   ├─ _validate_prompt()          → 400 if empty
-│   ├─ _get_or_create_conversation() → find by UUID or create
+│   ├─ _get_or_create_conversation() → find by UUID (scoped to user_id) or create
 │   ├─ _save_user_message()        → persist + compute embedding
 │   ├─ _get_conversation_messages() → fetch full chat history
 │   ├─ retrieve_relevant_messages() → semantic search (cosine sim)
@@ -179,11 +181,11 @@ Snapshot of routing metadata included in every API response for observability.
 
 ### LLMUsageLog (`src/db/usage.py`)
 
-SQLModel table recording every LLM call. Columns: `id`, `conversation_id`, `user_message_id`, `assistant_message_id`, `provider`, `model`, `task_type`, `complexity`, `classifier_reason`, `routing_reason`, `confidence`, `input_tokens`, `output_tokens`, `total_tokens`, `estimated_cost`, `latency_ms`, `created_at`.
+SQLModel table recording every LLM call. Columns: `id`, `user_id`, `conversation_id`, `user_message_id`, `assistant_message_id`, `provider`, `model`, `task_type`, `complexity`, `classifier_reason`, `routing_reason`, `confidence`, `input_tokens`, `output_tokens`, `total_tokens`, `estimated_cost`, `latency_ms`, `created_at`.
 
 ### ProviderKey (`src/db/provider_keys.py`)
 
-SQLModel table for BYOK key storage. Columns: `id`, `provider_name` (unique), `encrypted_api_key`, `is_active`, `created_at`, `updated_at`.
+SQLModel table for BYOK key storage. Columns: `id`, `user_id`, `provider_name` (unique per user via composite UniqueConstraint), `encrypted_api_key`, `is_active`, `created_at`, `updated_at`.
 
 ### Schemas (`src/api/providers/schemas.py`)
 
@@ -203,6 +205,9 @@ SQLModel table for BYOK key storage. Columns: `id`, `provider_name` (unique), `e
 
 ```
 src/api/
+├── auth/
+│   ├── __init__.py
+│   └── dependencies.py         # get_current_user — Supabase JWT verification + User sync
 ├── chat/
 │   ├── __init__.py          # re-exports router
 │   ├── schema.py            # ChatRequest (prompt + optional conversation_id)
@@ -301,6 +306,10 @@ Loads from `.env` via `pydantic-settings`. Fields: `DATABASE_URL`, `GROQ_API_KEY
 - Conversation CRUD (create, list, detail with messages)
 - Token-aware context window (tiktoken-based scoring and eviction)
 - Offline unit tests (74 tests, no API keys needed)
+- Auth: Supabase JWT verification via PyJWKClient (RS256)
+- Auth: auto-create local User records on JWT verification
+- Auth: user-scoped conversations, provider keys, and usage analytics
+- Auth: current_user dependency on all API endpoints
 
 ## 9. Current Limitations
 
@@ -309,10 +318,8 @@ Loads from `.env` via `pydantic-settings`. Fields: `DATABASE_URL`, `GROQ_API_KEY
 - **No streaming**: all responses are fully buffered.
 - **No OpenAI-compatible `/v1/chat/completions` endpoint**: the API is custom.
 - **Background summarization**: uses `BackgroundTasks` (in-process), not a queue. A crash during summarization loses the task.
-- **No auth**: all endpoints are public.
 - **No Alembic migrations**: tables are auto-created via `SQLModel.metadata.create_all`, which does not alter existing tables.
 - **Fallback fields not persisted**: `fallback_used`, `fallback_model`, `fallback_error` are returned in the API response but not stored in `LLMUsageLog`.
-- **BYOK not wired into routing**: routing still uses env-based provider availability. ProviderKeyService exists but is not yet consumed by ChatService (TODO in `providers/__init__.py`).
 - **No lint/format config**: no ruff, flake8, or pyproject.toml.
 
 ## 10. Next Roadmap
@@ -324,11 +331,10 @@ Loads from `.env` via `pydantic-settings`. Fields: `DATABASE_URL`, `GROQ_API_KEY
 - Add request validation and error standardization
 - Set up ruff + formatting
 
-### Phase 2: Wire BYOK into Routing
+### Phase 2: Enhance Provider Routing
 
-- Replace env-based `ProviderFactory.available_providers()` with `ProviderKeyService.get_available_providers()`
-- Add user_id to ProviderKey model when auth is implemented
 - Real provider API key validation (test connectivity)
+- Provider-level rate limiting and retry policies
 
 ### Phase 3: Async Provider Overhaul
 
