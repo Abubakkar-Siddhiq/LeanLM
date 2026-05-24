@@ -6,6 +6,7 @@ from sqlmodel import SQLModel, Field
 
 class LLMUsageLog(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: UUID = Field(foreign_key="user.id")
     conversation_id: UUID
     user_message_id: UUID
     assistant_message_id: UUID

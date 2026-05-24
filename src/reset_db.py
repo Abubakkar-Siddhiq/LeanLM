@@ -4,7 +4,9 @@ from sqlmodel import SQLModel
 from db.session import engine
 
 # import all models so metadata registers tables
-from db.models import Conversation, Message
+from db.models import User, Conversation, Message
+from db.provider_keys import ProviderKey
+from db.usage import LLMUsageLog
 
 print("Dropping all tables...")
 SQLModel.metadata.drop_all(engine)
